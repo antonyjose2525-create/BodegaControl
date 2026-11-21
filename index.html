@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>FinanzaPOS Pro — Control de Inventario, POS y Viabilidad</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            bnBg: '#0B0E11',
+            bnCard: '#181A20',
+            bnCardHover: '#2B3139',
+            bnBorder: '#2B3139',
+            bnYellow: '#FCD535',
+            bnYellowHover: '#F0B90B',
+            bnGreen: '#0ECB81',
+            bnRed: '#F6465D',
+            bnText: '#EAECEF',
+            bnMuted: '#848E9C'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    body {
+      background-color: #0B0E11;
+      color: #EAECEF;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      overflow-x: hidden;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0B0E11; }
+    ::-webkit-scrollbar-thumb { background: #2B3139; border-radius: 3px; }
+    .tab-active {
+      background-color: rgba(252, 213, 53, 0.12);
+      color: #FCD535;
+      border-left: 3px solid #FCD535;
+    }
+    @media (max-width: 768px) {
+      .tab-active {
+        border-left: none;
+        border-bottom: 2px solid #FCD535;
+      }
+    }
+    input, select, textarea {
+      font-size: 16px !important; /* Evita zoom automático en iPhone Safari */
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row">
+
+  <!-- TOP BAR MÓVIL -->
+  <header class="md:hidden bg-bnCard border-b border-bnBorder px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-lg bg-bnYellow flex items-center justify-center text-black font-black text-lg">F</div>
+      <div>
+        <h1 class="font-bold text-sm leading-tight text-bnText">FinanzaPOS</h1>
+        <p class="text-[11px] text-bnMuted">Tasa: <span id="mob-rate-badge" class="text-bnYellow font-semibold">915.00</span> Bs/$</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button onclick="switchTab('pos')" class="bg-bnYellow text-black font-bold text-xs px-3 py-1.5 rounded-lg">Ir a POS</button>
+    </div>
+  </header>
+
+  <!-- SIDEBAR IZQUIERDO (Desktop) / BOTTOM NAV (iPhone) -->
+  <aside class="w-full md:w-64 bg-bnCard border-t md:border-t-0 md:border-r border-bnBorder flex md:flex-col justify-between fixed bottom-0 md:static z-40 md:min-h-screen">
+    <div>
+      <!-- Brand Desktop -->
+      <div class="hidden md:flex items-center gap-3 px-6 py-5 border-b border-bnBorder">
+        <div class="w-9 h-9 rounded-lg bg-bnYellow flex items-center justify-center text-black font-black text-xl">F</div>
+        <div>
+          <h1 class="font-bold text-base tracking-tight text-bnText">FinanzaPOS Pro</h1>
+          <span class="text-xs text-bnMuted">Ropa Bebé &amp; Cantina</span>
+        </div>
+      </div>
+
+      <!-- Menú Navegación -->
+      <nav class="flex md:flex-col justify-around md:justify-start py-1 md:py-4 gap-0 md:gap-1 overflow-x-auto">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn tab-active flex flex-col md:flex-row items-center gap-1 md:gap-3 px-3 md:px-6 py-2 md:py-3 text-[11px] md:text-sm font-medium text-bnMuted hover:text-bnText transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          <span>Viabilidad</span>
+        </button>
+
+        <button onclick="switchTab('pos')" id="nav-pos" class="nav-btn flex flex-col md:flex-row items-center gap-1 md:gap-3 px-3 md:px-6 py-2 md:py-3 text-[11px] md:text-sm font-medium text-bnMuted hover:text-bnText transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          <span>POS / Venta</span>
+        </button>
+
+        <button onclick="switchTab('inventario')" id="nav-inventario" class="nav-btn flex flex-col md:flex-row items-center gap-1 md:gap-3 px-3 md:px-6 py-2 md:py-3 text-[11px] md:text-sm font-medium text-bnMuted hover:text-bnText transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+          <span>Inventario</span>
+        </button>
+
+        <button onclick="switchTab('cobranzas')" id="nav-cobranzas" class="nav-btn flex flex-col md:flex-row items-center gap-1 md:gap-3 px-3 md:px-6 py-2 md:py-3 text-[11px] md:text-sm font-medium text-bnMuted hover:text-bnText transition relative">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Créditos</span>
+          <span id="badge-creditos" class="hidden md:inline-block ml-auto bg-bnRed text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">0</span>
+        </button>
+
+        <button onclick="switchTab('gastos')" id="nav-gastos" class="nav-btn flex flex-col md:flex-row items-center gap-1 md:gap-3 px-3 md:px-6 py-2 md:py-3 text-[11px] md:text-sm font-medium text-bnMuted hover:text-bnText transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2z"/></svg>
+          <span>Caja / Gastos</span>
+        </button>
+
+        <button onclick="switchTab('config')" id="nav-config" class="nav-btn flex flex-col md:flex-row items-center gap-1 md:gap-3 px-3 md:px-6 py-2 md:py-3 text-[11px] md:text-sm font-medium text-bnMuted hover:text-bnText transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span>Respaldo</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Indicador Tasas en Sidebar Desktop -->
+    <div class="hidden md:block p-4 m-4 rounded-xl bg-bnBg border border-bnBorder">
+      <div class="text-xs text-bnMuted mb-1">Tasa Activa Operación</div>
+      <div class="flex items-baseline justify-between">
+        <span class="text-lg font-bold text-bnYellow" id="side-active-rate">915.00</span>
+        <span class="text-xs text-bnMuted">Bs / $</span>
+      </div>
+      <div class="mt-2 pt-2 border-t border-bnBorder flex justify-between text-[11px] text-bnMuted">
+        <span>BCV: <b id="side-bcv-rate" class="text-bnText">914.03</b></span>
+        <span>Par: <b id="side-par-rate" class="text-bnText">915.75</b></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="flex-1 p-4 md:p-6 pb-24 md:pb-8 max-w-7xl mx-auto w-full">
+
+    <!-- ========================================================= -->
+    <!-- SECCIÓN 1: DASHBOARD DE VIABILIDAD Y RENTABILIDAD         -->
+    <!-- ========================================================= -->
+    <section id="sec-dashboard" class="space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl md:text-2xl font-bold text-bnText">Panel de Viabilidad y Rentabilidad</h2>
+          <p class="text-xs md:text-sm text-bnMuted">Control financiero en tiempo real: capital, mercancía en tránsito y ganancia neta.</p>
+        </div>
+        <div class="flex items-center gap-2 bg-bnCard border border-bnBorder px-3 py-2 rounded-xl">
+          <span class="text-xs text-bnMuted">Tasa POS:</span>
+          <select id="dash-rate-selector" onchange="changeActiveRateType(this.value)" class="bg-bnBg text-bnYellow font-bold text-xs px-2 py-1 rounded border border-bnBorder">
+            <option value="oficial">Oficial / BCV</option>
+            <option value="paralela" selected>Paralela / Ref.</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tarjetas KPI Principales -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-bnCard border border-bnBorder rounded-xl p-4">
+          <div class="flex justify-between items-start">
+            <span class="text-xs text-bnMuted font-medium">Capital Inicial + Aportes</span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-bnYellow/10 text-bnYellow font-semibold">Base</span>
+          </div>
+          <div class="mt-2 text-2xl font-bold text-bnText" id="kpi-capital-inicial">$0.00</div>
+          <div class="mt-1 text-xs text-bnMuted" id="kpi-capital-inicial-bs">Bs. 0.00</div>
+        </div>
+
+        <div class="bg-bnCard border border-bnBorder rounded-xl p-4">
+          <div class="flex justify-between items-start">
+            <span class="text-xs text-bnMuted font-medium">Efectivo Líquido Disponible</span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-bnGreen/10 text-bnGreen font-semibold">En Caja</span>
+          </div>
+          <div class="mt-2 text-2xl font-bold text-bnGreen" id="kpi-liquido">$0.00</div>
+          <div class="mt-1 text-xs text-bnMuted" id="kpi-liquido-bs">Bs. 0.00</div>
+        </div>
+
+        <div class="bg-bnCard border border-bnBorder rounded-xl p-4">
+          <div class="flex justify-between items-start">
+            <span class="text-xs text-bnMuted font-medium">Inventario Disponible</span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-semibold" id="kpi-inv-disp-unid">0 unid.</span>
+          </div>
+          <div class="mt-2 text-2xl font-bold text-bnText" id="kpi-inv-disp">$0.00</div>
+          <div class="mt-1 text-xs text-bnMuted">Costo puesto en tienda</div>
+        </div>
+
+        <div class="bg-bnCard border border-bnBorder rounded-xl p-4">
+          <div class="flex justify-between items-start">
+            <span class="text-xs text-bnMuted font-medium">Mercancía En Tránsito</span>
+            <span class="text-[11px] px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 font-semibold" id="kpi-inv-trans-unid">0 unid.</span>
+          </div>
+          <div class="mt-2 text-2xl font-bold text-amber-400" id="kpi-inv-trans">$0.00</div>
+          <div class="mt-1 text-xs text-bnMuted">Invertido por llegar</div>
+        </div>
+      </div>
+
+      <!-- Segunda Fila KPI: Rentabilidad y Viabilidad -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="bg-bnCard border border-bnBorder rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <span class="text-xs text-bnMuted uppercase tracking-wider font-semibold">Beneficio Neto Real (Ganancia Limpia)</span>
+            <div class="mt-2 text-3xl font-black text-bnGreen" id="kpi-beneficio-neto">$0.00</div>
+            <p class="text-xs text-bnMuted mt-1">Ventas Brutas − Costo Mercancía Vendida − Gastos Operativos</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-bnBorder grid grid-cols-3 gap-2 text-xs">
+            <div>
+              <span class="text-bnMuted block">Ventas Tot.</span>
+              <b class="text-bnText" id="kpi-ventas-tot">$0.00</b>
+            </div>
+            <div>
+              <span class="text-bnMuted block">Costo Vend.</span>
+              <b class="text-bnText" id="kpi-costo-vend">$0.00</b>
+            </div>
+            <div>
+              <span class="text-bnMuted block">Gastos Op.</span>
+              <b class="text-bnRed" id="kpi-gastos-tot">$0.00</b>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-bnCard border border-bnBorder rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <span class="text-xs text-bnMuted uppercase tracking-wider font-semibold">Cuentas por Cobrar (Créditos)</span>
+            <div class="mt-2 text-3xl font-bold text-bnYellow" id="kpi-cxc">$0.00</div>
+            <p class="text-xs text-bnMuted mt-1">Saldo pendiente en calle (no suma al líquido hasta cobrarse)</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-bnBorder flex justify-between items-center text-xs">
+            <span class="text-bnMuted">Clientes con saldo activo: <b id="kpi-cxc-count" class="text-bnText">0</b></span>
+            <button onclick="switchTab('cobranzas')" class="text-bnYellow font-semibold hover:underline">Ver cobranzas →</button>
+          </div>
+        </div>
+
+        <div class="bg-bnCard border border-bnBorder rounded-xl p-5 flex flex-col justify-between">
+          <div>
+            <span class="text-xs text-bnMuted uppercase tracking-wider font-semibold">Patrimonio Total del Negocio</span>
+            <div class="mt-2 text-3xl font-bold text-bnText" id="kpi-patrimonio">$0.00</div>
+            <p class="text-xs text-bnMuted mt-1">Caja Líquida + Inventario Disp. + En Tránsito + Por Cobrar</p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-bnBorder flex justify-between items-center text-xs">
+            <span class="text-bnMuted">ROI / Retorno s/ Capital:</span>
+            <span id="kpi-roi" class="font-bold text-bnGreen">0.0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Últimas Ventas Registradas -->
+      <div class="bg-bnCard border border-bnBorder rounded-xl p-4 md:p-5">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-sm md:text-base text-bnText">Últimas Operaciones de Venta</h3>
+          <button onclick="exportSalesCSV()" class="text-xs bg-bnBg hover:bg-bnCardHover border border-bnBorder text-bnText px-3 py-1.5 rounded-lg">Exportar Ventas CSV</button>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs md:text-sm">
+            <thead>
+              <tr class="border-b border-bnBorder text-bnMuted">
+                <th class="py-2 px-3">Fecha</th>
+                <th class="py-2 px-3">Cliente</th>
+                <th class="py-2 px-3">Detalle</th>
+                <th class="py-2 px-3">Condición</th>
+                <th class="py-2 px-3 text-right">Total ($)</th>
+                <th class="py-2 px-3 text-right">Total (Bs.)</th>
+              </tr>
+            </thead>
+            <tbody id="dash-recent-sales" class="divide-y divide-bnBorder">
+              <tr><td colspan="6" class="py-4 text-center text-bnMuted">Sin ventas registradas aún.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- SECCIÓN 2: PUNTO DE VENTA (POS RÁPIDO Y TÁCTIL)           -->
+    <!-- ========================================================= -->
+    <section id="sec-pos" class="hidden space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-xl font-bold text-bnText">Punto de Venta (POS)</h2>
+          <p class="text-xs text-bnMuted">En Cantina cada toque suma +1 unidad al carrito. Solo se muestran artículos Disponibles.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="setPosCategory('Cantina')" id="pos-cat-cantina" class="px-4 py-2 rounded-xl text-xs font-bold bg-bnYellow text-black transition">🍫 Cantina / Chucherías</button>
+          <button onclick="setPosCategory('Ropa de Bebe')" id="pos-cat-ropa" class="px-4 py-2 rounded-xl text-xs font-bold bg-bnCard border border-bnBorder text-bnText transition">👶 Ropa de Bebé</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Catálogo de Productos POS (7 cols) -->
+        <div class="lg:col-span-7 space-y-3">
+          <div class="flex gap-2">
+            <input type="text" id="pos-search" oninput="renderPOS()" placeholder="Buscar producto, talla o presentación..." class="w-full bg-bnCard border border-bnBorder rounded-xl px-4 py-2.5 text-sm text-bnText focus:outline-none focus:border-bnYellow" />
+          </div>
+
+          <div id="pos-products-grid" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-[60vh] overflow-y-auto pr-1">
+            <!-- Tarjetas generadas por JS -->
+          </div>
+        </div>
+
+        <!-- Carrito y Cierre de Venta (5 cols) -->
+        <div class="lg:col-span-5 bg-bnCard border border-bnBorder rounded-xl p-4 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3 border-b border-bnBorder">
+              <h3 class="font-bold text-sm text-bnText">Ticket de Venta Actual</h3>
+              <button onclick="clearCart()" class="text-xs text-bnRed hover:underline">Vaciar</button>
+            </div>
+
+            <div id="pos-cart-items" class="divide-y divide-bnBorder max-h-56 overflow-y-auto my-2">
+              <div class="py-8 text-center text-xs text-bnMuted">Toca un producto para agregarlo al ticket</div>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-bnBorder space-y-3">
+            <!-- Totales -->
+            <div class="bg-bnBg rounded-xl p-3 space-y-1">
+              <div class="flex justify-between text-xs text-bnMuted">
+                <span>Tasa Aplicada:</span>
+                <span><b id="pos-rate-display" class="text-bnYellow">915.00</b> Bs/$</span>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <span class="text-sm font-semibold text-bnText">Total USD:</span>
+                <span class="text-2xl font-black text-bnGreen" id="pos-total-usd">$0.00</span>
+              </div>
+              <div class="flex justify-between items-baseline">
+                <span class="text-xs text-bnMuted">Total Bolívares:</span>
+                <span class="text-sm font-bold text-bnText" id="pos-total-bs">Bs. 0.00</span>
+              </div>
+            </div>
+
+            <!-- Método y Condición de Pago -->
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-[11px] text-bnMuted mb-1">Método de Pago</label>
+                <select id="pos-payment-method" class="w-full bg-bnBg border border-bnBorder rounded-lg px-2.5 py-2 text-xs text-bnText">
+                  <option value="Efectivo $">Efectivo ($)</option>
+                  <option value="Pago Móvil">Pago Móvil (Bs.)</option>
+                  <option value="Zelle">Zelle ($)</option>
+                  <option value="Efectivo Bs">Efectivo (Bs.)</option>
+                  <option value="Punto Venta">Punto de Venta</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] text-bnMuted mb-1">Condición</label>
+                <select id="pos-condition" onchange="toggleCreditFields()" class="w-full bg-bnBg border border-bnBorder rounded-lg px-2.5 py-2 text-xs text-bnText">
+                  <option value="Contado">Contado</option>
+                  <option value="Credito">Crédito / Cuotas</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Datos Cliente + Opciones Crédito -->
+            <div class="space-y-2 bg-bnBg/60 p-2.5 rounded-xl border border-bnBorder">
+              <div class="grid grid-cols-2 gap-2">
+                <input type="text" id="pos-client-name" placeholder="Nombre cliente (opc.)" class="bg-bnCard border border-bnBorder rounded-lg px-2.5 py-1.5 text-xs text-bnText" />
+                <input type="tel" id="pos-client-phone" placeholder="WhatsApp ej: 58412..." class="bg-bnCard border border-bnBorder rounded-lg px-2.5 py-1.5 text-xs text-bnText" />
+              </div>
+
+              <div id="pos-credit-box" class="hidden grid grid-cols-3 gap-2 pt-1">
+                <div>
+                  <label class="block text-[10px] text-bnMuted">Abono Inicial ($)</label>
+                  <input type="number" step="0.01" id="pos-credit-down" value="0" oninput="updateCartUI()" class="w-full bg-bnCard border border-bnBorder rounded-lg px-2 py-1 text-xs text-bnText" />
+                </div>
+                <div>
+                  <label class="block text-[10px] text-bnMuted">Plazo (Días)</label>
+                  <input type="number" id="pos-credit-days" value="15" oninput="updateCartUI()" class="w-full bg-bnCard border border-bnBorder rounded-lg px-2 py-1 text-xs text-bnText" />
+                </div>
+                <div>
+                  <label class="block text-[10px] text-bnMuted">N° Cuotas</label>
+                  <input type="number" id="pos-credit-installments" value="2" min="1" oninput="updateCartUI()" class="w-full bg-bnCard border border-bnBorder rounded-lg px-2 py-1 text-xs text-bnText" />
+                </div>
+                <div class="col-span-3 text-[11px] text-bnYellow flex justify-between pt-1">
+                  <span>Saldo pendiente: <b id="pos-credit-balance">$0.00</b></span>
+                  <span>Cuota aprox: <b id="pos-credit-quota">$0.00</b></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Botones Acción -->
+            <div class="grid grid-cols-2 gap-2">
+              <button onclick="processSale(false)" class="w-full bg-bnGreen hover:opacity-90 text-black font-bold py-2.5 rounded-xl text-xs transition">
+                Registrar Venta
+              </button>
+              <button onclick="processSale(true)" class="w-full bg-[#25D366] hover:opacity-90 text-black font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1">
+                <span>Cobrar y WhatsApp</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- SECCIÓN 3: INVENTARIO, EN TRÁNSITO Y PLANTILLAS CSV       -->
+    <!-- ========================================================= -->
+    <section id="sec-inventario" class="hidden space-y-5">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl font-bold text-bnText">Inventario y Mercancía en Tránsito</h2>
+          <p class="text-xs text-bnMuted">Estructura inspirada en tus facturas: empaques, IVA 16%, flete adicional y confirmación de llegada.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="downloadTemplateCSV('inventario')" class="bg-bnCard hover:bg-bnCardHover border border-bnBorder text-bnYellow text-xs font-semibold px-3 py-2 rounded-xl">
+            ⬇ Plantilla Inventario CSV
+          </button>
+          <label class="bg-bnYellow hover:bg-bnYellowHover text-black text-xs font-bold px-3 py-2 rounded-xl cursor-pointer">
+            ⬆ Subir CSV Masivo
+            <input type="file" accept=".csv" onchange="uploadInventoryCSV(event)" class="hidden" />
+          </label>
+          <button onclick="openProductModal()" class="bg-bnGreen text-black text-xs font-bold px-3 py-2 rounded-xl">
+            + Nuevo Producto
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Inventario -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-bnCard border border-bnBorder p-3 rounded-xl">
+        <input type="text" id="inv-search" oninput="renderInventory()" placeholder="Filtrar por nombre o talla..." class="bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-xs text-bnText" />
+        <select id="inv-filter-cat" onchange="renderInventory()" class="bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-xs text-bnText">
+          <option value="ALL">Todas las Categorías</option>
+          <option value="Cantina">Cantina / Chucherías</option>
+          <option value="Ropa de Bebe">Ropa de Bebé</option>
+        </select>
+        <select id="inv-filter-status" onchange="renderInventory()" class="bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-xs text-bnText">
+          <option value="ALL">Todos los Estados</option>
+          <option value="Disponible">Disponible (En Tienda)</option>
+          <option value="En Tránsito">En Tránsito (Por Llegar)</option>
+        </select>
+      </div>
+
+      <!-- Tabla Inventario -->
+      <div class="bg-bnCard border border-bnBorder rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-bnBg border-b border-bnBorder text-bnMuted">
+                <th class="py-3 px-3">Producto / Talla</th>
+                <th class="py-3 px-3">Categoría</th>
+                <th class="py-3 px-3 text-center">Estado</th>
+                <th class="py-3 px-3 text-right">Stock</th>
+                <th class="py-3 px-3 text-right">Costo Unit. ($)</th>
+                <th class="py-3 px-3 text-right">Precio Venta ($)</th>
+                <th class="py-3 px-3 text-right">Margen</th>
+                <th class="py-3 px-3 text-center">Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="inv-table-body" class="divide-y divide-bnBorder">
+              <!-- Filas JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- SECCIÓN 4: CUENTAS POR COBRAR (CRÉDITOS Y CUOTAS)         -->
+    <!-- ========================================================= -->
+    <section id="sec-cobranzas" class="hidden space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl font-bold text-bnText">Cuentas por Cobrar y Cuotas</h2>
+          <p class="text-xs text-bnMuted">Gestiona saldos pendientes, registra abonos y envía recordatorios por WhatsApp.</p>
+        </div>
+        <button onclick="downloadTemplateCSV('ventas_creditos')" class="bg-bnCard border border-bnBorder text-bnYellow text-xs font-semibold px-3 py-2 rounded-xl">
+          ⬇ Plantilla Créditos CSV
+        </button>
+      </div>
+
+      <div id="credit-cards-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Tarjetas de créditos pendientes -->
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- SECCIÓN 5: CAPITAL INICIAL, APORTES Y GASTOS (CAJA CHICA) -->
+    <!-- ========================================================= -->
+    <section id="sec-gastos" class="hidden space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl font-bold text-bnText">Capital Inicial, Aportes y Caja Chica</h2>
+          <p class="text-xs text-bnMuted">Registra el capital de arranque ($1,000 u otro monto), inyecciones o gastos operativos.</p>
+        </div>
+        <button onclick="downloadTemplateCSV('gastos_capital')" class="bg-bnCard border border-bnBorder text-bnYellow text-xs font-semibold px-3 py-2 rounded-xl">
+          ⬇ Plantilla Capital/Gastos CSV
+        </button>
+      </div>
+
+      <!-- Formulario Rápido Movimiento -->
+      <form onsubmit="addFinancialMovement(event)" class="bg-bnCard border border-bnBorder rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 items-end">
+        <div>
+          <label class="block text-[11px] text-bnMuted mb-1">Tipo Movimiento</label>
+          <select id="mov-type" class="w-full bg-bnBg border border-bnBorder rounded-lg px-2.5 py-2 text-xs text-bnText">
+            <option value="Capital Inicial">Capital Inicial</option>
+            <option value="Aporte Adicional">Aporte Adicional</option>
+            <option value="Gasto Operativo">Gasto Operativo</option>
+          </select>
+        </div>
+        <div class="lg:col-span-2">
+          <label class="block text-[11px] text-bnMuted mb-1">Descripción / Concepto</label>
+          <input type="text" id="mov-desc" required placeholder="Ej: Capital arranque / Bolsas / Flete" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-xs text-bnText" />
+        </div>
+        <div>
+          <label class="block text-[11px] text-bnMuted mb-1">Moneda</label>
+          <select id="mov-currency" class="w-full bg-bnBg border border-bnBorder rounded-lg px-2.5 py-2 text-xs text-bnText">
+            <option value="USD">Dólares ($)</option>
+            <option value="VES">Bolívares (Bs.)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-[11px] text-bnMuted mb-1">Monto</label>
+          <input type="number" step="0.01" id="mov-amount" required placeholder="0.00" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-xs text-bnText" />
+        </div>
+        <button type="submit" class="w-full bg-bnYellow hover:bg-bnYellowHover text-black font-bold py-2 rounded-lg text-xs">
+          + Registrar
+        </button>
+      </form>
+
+      <!-- Tabla Movimientos -->
+      <div class="bg-bnCard border border-bnBorder rounded-xl overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-bnBg border-b border-bnBorder text-bnMuted">
+                <th class="py-3 px-3">Fecha</th>
+                <th class="py-3 px-3">Tipo</th>
+                <th class="py-3 px-3">Descripción</th>
+                <th class="py-3 px-3 text-right">Monto Original</th>
+                <th class="py-3 px-3 text-right">Tasa</th>
+                <th class="py-3 px-3 text-right">Equiv. USD ($)</th>
+                <th class="py-3 px-3 text-center">Borrar</th>
+              </tr>
+            </thead>
+            <tbody id="mov-table-body" class="divide-y divide-bnBorder">
+              <!-- Filas JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================================= -->
+    <!-- SECCIÓN 6: CONFIGURACIÓN DE TASAS Y RESPALDO JSON         -->
+    <!-- ========================================================= -->
+    <section id="sec-config" class="hidden space-y-6">
+      <div>
+        <h2 class="text-xl font-bold text-bnText">Tasas de Cambio y Sincronización Multi-Dispositivo</h2>
+        <p class="text-xs text-bnMuted">Actualiza las tasas diarias y exporta/importa tu base de datos JSON entre tu laptop y tu iPhone.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Tasas de Cambio -->
+        <div class="bg-bnCard border border-bnBorder rounded-xl p-5 space-y-4">
+          <h3 class="font-bold text-sm text-bnYellow">1. Configuración de Tasas (Bs / $)</h3>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-bnMuted mb-1">Tasa Oficial / BCV</label>
+              <input type="number" step="0.01" id="cfg-rate-bcv" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-sm text-bnText font-bold" />
+            </div>
+            <div>
+              <label class="block text-xs text-bnMuted mb-1">Tasa Paralela / Referencial</label>
+              <input type="number" step="0.01" id="cfg-rate-par" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-sm text-bnText font-bold" />
+            </div>
+          </div>
+          <button onclick="saveRates()" class="w-full bg-bnYellow hover:bg-bnYellowHover text-black font-bold py-2.5 rounded-xl text-xs">
+            Guardar Tasas del Día
+          </button>
+        </div>
+
+        <!-- Sincronización JSON -->
+        <div class="bg-bnCard border border-bnBorder rounded-xl p-5 space-y-4">
+          <h3 class="font-bold text-sm text-bnGreen">2. Respaldo y Sincronización (JSON)</h3>
+          <p class="text-xs text-bnMuted">Descarga este archivo al cerrar turno en tu PC y cárgalo en Safari/iPhone (o viceversa) para tener todo idéntico sin depender de la nube.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button onclick="exportBackupJSON()" class="bg-bnGreen text-black font-bold py-2.5 px-4 rounded-xl text-xs">
+              ⬇ Exportar Respaldo (.JSON)
+            </button>
+            <label class="bg-bnBg hover:bg-bnCardHover border border-bnBorder text-bnText font-bold py-2.5 px-4 rounded-xl text-xs text-center cursor-pointer">
+              ⬆ Importar Respaldo (.JSON)
+              <input type="file" accept=".json" onchange="importBackupJSON(event)" class="hidden" />
+            </label>
+          </div>
+          <div class="pt-3 border-t border-bnBorder flex justify-between items-center">
+            <span class="text-[11px] text-bnMuted">Cargar datos de ejemplo (Facturas Nov 2026):</span>
+            <button onclick="loadDemoData()" class="text-xs text-bnYellow hover:underline">Restaurar Demo</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Descarga de todas las Plantillas CSV -->
+      <div class="bg-bnCard border border-bnBorder rounded-xl p-5 space-y-3">
+        <h3 class="font-bold text-sm text-bnText">3. Plantillas CSV Adaptadas (Estilo Facturas Mayorista / Helados / Ropa)</h3>
+        <p class="text-xs text-bnMuted">Descarga cualquiera de estas 4 plantillas listas para abrir en Excel y estructurar tus cargas masivas o reportes:</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
+          <button onclick="downloadTemplateCSV('inventario')" class="bg-bnBg hover:bg-bnCardHover border border-bnBorder p-3 rounded-xl text-left">
+            <div class="text-xs font-bold text-bnYellow">1. Plantilla Inventario</div>
+            <div class="text-[11px] text-bnMuted mt-1">Empaques, IVA 16%, flete, estado y precios.</div>
+          </button>
+          <button onclick="downloadTemplateCSV('compras_facturas')" class="bg-bnBg hover:bg-bnCardHover border border-bnBorder p-3 rounded-xl text-left">
+            <div class="text-xs font-bold text-bnYellow">2. Compras / Facturas</div>
+            <div class="text-[11px] text-bnMuted mt-1">Desglose base sin IVA, tasa histórica y costo $.</div>
+          </button>
+          <button onclick="downloadTemplateCSV('ventas_creditos')" class="bg-bnBg hover:bg-bnCardHover border border-bnBorder p-3 rounded-xl text-left">
+            <div class="text-xs font-bold text-bnYellow">3. Ventas y Créditos</div>
+            <div class="text-[11px] text-bnMuted mt-1">Contado, cuotas, plazos y teléfonos WhatsApp.</div>
+          </button>
+          <button onclick="downloadTemplateCSV('gastos_capital')" class="bg-bnBg hover:bg-bnCardHover border border-bnBorder p-3 rounded-xl text-left">
+            <div class="text-xs font-bold text-bnYellow">4. Capital y Caja Chica</div>
+            <div class="text-[11px] text-bnMuted mt-1">Capital inicial, aportes y gastos operativos.</div>
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL AGREGAR / EDITAR / CONFIRMAR LLEGADA DE PRODUCTO -->
+  <div id="product-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+    <div class="bg-bnCard border border-bnBorder rounded-2xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center border-b border-bnBorder pb-3">
+        <h3 id="modal-prod-title" class="font-bold text-base text-bnText">Agregar Producto al Inventario</h3>
+        <button onclick="closeProductModal()" class="text-bnMuted hover:text-bnText text-lg">&times;</button>
+      </div>
+      <form onsubmit="saveProductForm(event)" class="space-y-3 text-xs">
+        <input type="hidden" id="prod-id" />
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="sm:col-span-2">
+            <label class="block text-bnMuted mb-1">Nombre del Producto</label>
+            <input type="text" id="prod-name" required placeholder="Ej: Body Algodón RN / Golpe Grande X17" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-bnText" />
+          </div>
+          <div>
+            <label class="block text-bnMuted mb-1">Categoría</label>
+            <select id="prod-cat" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-bnText">
+              <option value="Cantina">Cantina</option>
+              <option value="Ropa de Bebe">Ropa de Bebe</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-bnMuted mb-1">Talla / Presentación</label>
+            <input type="text" id="prod-size" placeholder="Ej: RN, 0-3M, Bulto x20" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-bnText" />
+          </div>
+          <div>
+            <label class="block text-bnMuted mb-1">Estado Mercancía</label>
+            <select id="prod-status" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-bnText">
+              <option value="Disponible">Disponible (En Tienda)</option>
+              <option value="En Tránsito">En Tránsito (Por Llegar)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-bnMuted mb-1">Stock Total (Unidades)</label>
+            <input type="number" id="prod-stock" required min="0" value="1" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-bnText" />
+          </div>
+          <div>
+            <label class="block text-bnMuted mb-1">Moneda de Compra</label>
+            <select id="prod-cost-curr" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-bnText">
+              <option value="USD">Dólares ($)</option>
+              <option value="VES">Bolívares (Bs.)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-bnMuted mb-1">Tasa de Compra (Bs/$)</label>
+            <input type="number" step="0.01" id="prod-buy-rate" value="915.00" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-bnText" />
+          </div>
+          <div>
+            <label class="block text-bnMuted mb-1">Costo Unitario Base (sin flete)</label>
+            <input type="number" step="0.0001" id="prod-base-cost" required value="0" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-bnText" />
+          </div>
+          <div>
+            <label class="block text-bnMuted mb-1">Flete / Envío Unitario Adic.</label>
+            <input type="number" step="0.0001" id="prod-freight-cost" value="0" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-bnText" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-bnMuted mb-1">Precio de Venta Unitario ($ USD)</label>
+            <input type="number" step="0.01" id="prod-sell-price" required value="0" class="w-full bg-bnBg border border-bnBorder rounded-lg px-3 py-2 text-bnYellow font-bold" />
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-bnBorder">
+          <button type="button" onclick="closeProductModal()" class="px-4 py-2 rounded-lg bg-bnBg text-bnMuted">Cancelar</button>
+          <button type="submit" class="px-5 py-2 rounded-lg bg-bnYellow text-black font-bold">Guardar Producto</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // =========================================================================
+    // ESTADO GLOBAL Y PERSISTENCIA EN LOCALSTORAGE (COMPATIBLE SAFARI iOS)
+    // =========================================================================
+    const STORAGE_KEY = 'finanzapos_pro_v1';
+
+    let appState = {
+      rates: {
+        bcv: 914.03,
+        paralela: 915.75,
+        activeType: 'paralela'
+      },
+      products: [],
+      sales: [],
+      movements: []
+    };
+
+    let cart = [];
+    let currentPosCategory = 'Cantina';
+
+    function getActiveRate() {
+      return appState.rates.activeType === 'oficial'
+        ? parseFloat(appState.rates.bcv) || 1
+        : parseFloat(appState.rates.paralela) || 1;
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.warn('Error guardando en localStorage:', e);
+      }
+      refreshAllUI();
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          appState = JSON.parse(raw);
+        } else {
+          loadDemoData(false);
+        }
+      } catch (e) {
+        loadDemoData(false);
+      }
+      refreshAllUI();
+    }
+
+    function loadDemoData(confirmReset = true) {
+      if (confirmReset && !confirm('¿Cargar datos de ejemplo basados en tus compras de Nov 2026? Esto reemplazará los datos actuales.')) return;
+      appState = {
+        rates: { bcv: 914.03, paralela: 915.75, activeType: 'paralela' },
+        movements: [
+          { id: 'm1', date: '2026-11-01', type: 'Capital Inicial', desc: 'Capital inicial de arranque', currency: 'USD', amount: 1000, rate: 914.03, usdEquiv: 1000 },
+          { id: 'm2', date: '2026-11-18', type: 'Gasto Operativo', desc: 'Bolsas negras gigantes y empaques', currency: 'USD', amount: 15, rate: 915.00, usdEquiv: 15 }
+        ],
+        products: [
+          { id: 'p1', name: 'CLIPS BOLSA PEQUEÑO 20X120GR', cat: 'Cantina', size: '120gr', status: 'Disponible', stock: 20, unitCostUsd: 1.605, sellPriceUsd: 2.20 },
+          { id: 'p2', name: 'GOLPE GRANDE X17', cat: 'Cantina', size: 'Unidad', status: 'Disponible', stock: 17, unitCostUsd: 2.093, sellPriceUsd: 2.80 },
+          { id: 'p3', name: 'GOMITAS PLAY 24X55GR', cat: 'Cantina', size: '55gr', status: 'Disponible', stock: 24, unitCostUsd: 0.364, sellPriceUsd: 0.60 },
+          { id: 'p4', name: 'COCOSETTE CAJA 12X18', cat: 'Cantina', size: 'Unidad', status: 'Disponible', stock: 18, unitCostUsd: 0.771, sellPriceUsd: 1.15 },
+          { id: 'p5', name: 'ZOEK CROCANTE (Helado)', cat: 'Cantina', size: 'Con IVA', status: 'Disponible', stock: 6, unitCostUsd: 1.120, sellPriceUsd: 1.60 },
+          { id: 'p6', name: 'BATIBOOM (Helado)', cat: 'Cantina', size: 'Con IVA', status: 'Disponible', stock: 6, unitCostUsd: 0.590, sellPriceUsd: 0.95 },
+          { id: 'p7', name: 'Body Algodón Manga Corta', cat: 'Ropa de Bebe', size: 'RN / 0-3M', status: 'Disponible', stock: 12, unitCostUsd: 2.50, sellPriceUsd: 5.00 },
+          { id: 'p8', name: 'Set Medias Antideslizantes x3', cat: 'Ropa de Bebe', size: '3-6M', status: 'En Tránsito', stock: 20, unitCostUsd: 1.80, sellPriceUsd: 3.80 }
+        ],
+        sales: [
+          {
+            id: 's1',
+            date: '2026-11-20',
+            client: 'Mariana Pérez',
+            phone: '584125550101',
+            items: [{ id: 'p7', name: 'Body Algodón Manga Corta', qty: 2, priceUsd: 5.00, costUsd: 2.50 }],
+            totalUsd: 10.00,
+            totalCostUsd: 5.00,
+            rate: 915.75,
+            method: 'Pago Móvil',
+            condition: 'Credito',
+            paidUsd: 4.00,
+            balanceUsd: 6.00,
+            days: 15,
+            installments: 2
+          }
+        ]
+      };
+      saveState();
+    }
+
+    // =========================================================================
+    // NAVEGACIÓN ENTRE PESTAÑAS
+    // =========================================================================
+    function switchTab(tabName) {
+      const sections = ['dashboard', 'pos', 'inventario', 'cobranzas', 'gastos', 'config'];
+      sections.forEach(s => {
+        document.getElementById('sec-' + s).classList.toggle('hidden', s !== tabName);
+        const btn = document.getElementById('nav-' + s);
+        if (btn) btn.classList.toggle('tab-active', s === tabName);
+      });
+      if (tabName === 'pos') renderPOS();
+      if (tabName === 'inventario') renderInventory();
+      if (tabName === 'cobranzas') renderCredits();
+      if (tabName === 'gastos') renderMovements();
+      if (tabName === 'dashboard') renderDashboard();
+    }
+
+    // =========================================================================
+    // TASAS DE CAMBIO
+    // =========================================================================
+    function changeActiveRateType(type) {
+      appState.rates.activeType = type;
+      saveState();
+    }
+
+    function saveRates() {
+      const bcv = parseFloat(document.getElementById('cfg-rate-bcv').value);
+      const par = parseFloat(document.getElementById('cfg-rate-par').value);
+      if (bcv > 0) appState.rates.bcv = bcv;
+      if (par > 0) appState.rates.paralela = par;
+      saveState();
+      alert('Tasas actualizadas correctamente.');
+    }
+
+    // =========================================================================
+    // DASHBOARD DE VIABILIDAD Y RENTABILIDAD
+    // =========================================================================
+    function renderDashboard() {
+      const rate = getActiveRate();
+
+      // 1. Capital Inicial + Aportes vs Gastos Operativos
+      let capitalBase = 0;
+      let gastosOp = 0;
+      appState.movements.forEach(m => {
+        if (m.type === 'Gasto Operativo') gastosOp += m.usdEquiv;
+        else capitalBase += m.usdEquiv;
+      });
+
+      // 2. Valor Inventario Disponible y En Tránsito (costo actual en stock)
+      let invDispVal = 0, invDispUnid = 0;
+      let invTransVal = 0, invTransUnid = 0;
+      appState.products.forEach(p => {
+        const val = (p.stock || 0) * (p.unitCostUsd || 0);
+        if (p.status === 'Disponible') {
+          invDispVal += val;
+          invDispUnid += (p.stock || 0);
+        } else {
+          invTransVal += val;
+          invTransUnid += (p.stock || 0);
+        }
+      });
+
+      // 3. Ventas, Costo de Mercancía Vendida, Cobrado y Cuentas por Cobrar
+      let ventasTot = 0;
+      let costoVend = 0;
+      let efectivoCobradoVentas = 0;
+      let cxcPendiente = 0;
+      let cxcCount = 0;
+
+      appState.sales.forEach(s => {
+        ventasTot += s.totalUsd;
+        costoVend += s.totalCostUsd;
+        efectivoCobradoVentas += s.paidUsd;
+        if (s.balanceUsd > 0.009) {
+          cxcPendiente += s.balanceUsd;
+          cxcCount++;
+        }
+      });
+
+      // 4. Efectivo Líquido Disponible = Capital Base - (Inventario actual + Costo ya vendido) - Gastos + Ventas Cobradas
+      const inversionTotalMercancia = invDispVal + invTransVal + costoVend;
+      const liquidoDisponible = capitalBase - inversionTotalMercancia - gastosOp + efectivoCobradoVentas;
+
+      // 5. Beneficio Neto Real = Ventas Totales - Costo Mercancía Vendida - Gastos Operativos
+      const beneficioNeto = ventasTot - costoVend - gastosOp;
+
+      // 6. Patrimonio Total
+      const patrimonio = liquidoDisponible + invDispVal + invTransVal + cxcPendiente;
+      const roi = capitalBase > 0 ? ((beneficioNeto / capitalBase) * 100) : 0;
+
+      document.getElementById('kpi-capital-inicial').textContent = `$${capitalBase.toFixed(2)}`;
+      document.getElementById('kpi-capital-inicial-bs').textContent = `Bs. ${(capitalBase * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      document.getElementById('kpi-liquido').textContent = `$${liquidoDisponible.toFixed(2)}`;
+      document.getElementById('kpi-liquido').className = `mt-2 text-2xl font-bold ${liquidoDisponible >= 0 ? 'text-bnGreen' : 'text-bnRed'}`;
+      document.getElementById('kpi-liquido-bs').textContent = `Bs. ${(liquidoDisponible * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      document.getElementById('kpi-inv-disp').textContent = `$${invDispVal.toFixed(2)}`;
+      document.getElementById('kpi-inv-disp-unid').textContent = `${invDispUnid} unid.`;
+
+      document.getElementById('kpi-inv-trans').textContent = `$${invTransVal.toFixed(2)}`;
+      document.getElementById('kpi-inv-trans-unid').textContent = `${invTransUnid} unid.`;
+
+      document.getElementById('kpi-beneficio-neto').textContent = `$${beneficioNeto.toFixed(2)}`;
+      document.getElementById('kpi-beneficio-neto').className = `mt-2 text-3xl font-black ${beneficioNeto >= 0 ? 'text-bnGreen' : 'text-bnRed'}`;
+      document.getElementById('kpi-ventas-tot').textContent = `$${ventasTot.toFixed(2)}`;
+      document.getElementById('kpi-costo-vend').textContent = `$${costoVend.toFixed(2)}`;
+      document.getElementById('kpi-gastos-tot').textContent = `$${gastosOp.toFixed(2)}`;
+
+      document.getElementById('kpi-cxc').textContent = `$${cxcPendiente.toFixed(2)}`;
+      document.getElementById('kpi-cxc-count').textContent = cxcCount;
+
+      document.getElementById('kpi-patrimonio').textContent = `$${patrimonio.toFixed(2)}`;
+      document.getElementById('kpi-roi').textContent = `${roi.toFixed(1)}%`;
+
+      // Tabla últimas ventas
+      const tbody = document.getElementById('dash-recent-sales');
+      if (appState.sales.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-bnMuted">Sin ventas registradas aún.</td></tr>`;
+      } else {
+        tbody.innerHTML = [...appState.sales].reverse().slice(0, 8).map(s => {
+          const itemsTxt = s.items.map(i => `${i.qty}x ${i.name}`).join(', ');
+          const badge = s.condition === 'Credito'
+            ? `<span class="px-2 py-0.5 rounded bg-bnYellow/15 text-bnYellow text-[11px] font-semibold">Crédito ($${s.balanceUsd.toFixed(2)} pend.)</span>`
+            : `<span class="px-2 py-0.5 rounded bg-bnGreen/15 text-bnGreen text-[11px] font-semibold">Contado</span>`;
+          return `
+            <tr class="hover:bg-bnBg/50">
+              <td class="py-2.5 px-3 text-bnMuted">${s.date}</td>
+              <td class="py-2.5 px-3 font-medium text-bnText">${s.client || 'Mostrador'}</td>
+              <td class="py-2.5 px-3 text-bnMuted max-w-xs truncate">${itemsTxt}</td>
+              <td class="py-2.5 px-3">${badge}</td>
+              <td class="py-2.5 px-3 text-right font-bold text-bnText">$${s.totalUsd.toFixed(2)}</td>
+              <td class="py-2.5 px-3 text-right text-bnMuted">Bs. ${(s.totalUsd * s.rate).toFixed(2)}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    // =========================================================================
+    // PUNTO DE VENTA (POS TÁCTIL RÁPIDO)
+    // =========================================================================
+    function setPosCategory(cat) {
+      currentPosCategory = cat;
+      const btnCantina = document.getElementById('pos-cat-cantina');
+      const btnRopa = document.getElementById('pos-cat-ropa');
+      if (cat === 'Cantina') {
+        btnCantina.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-bnYellow text-black transition';
+        btnRopa.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-bnCard border border-bnBorder text-bnText transition';
+      } else {
+        btnRopa.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-bnYellow text-black transition';
+        btnCantina.className = 'px-4 py-2 rounded-xl text-xs font-bold bg-bnCard border border-bnBorder text-bnText transition';
+      }
+      renderPOS();
+    }
+
+    function renderPOS() {
+      const rate = getActiveRate();
+      document.getElementById('pos-rate-display').textContent = rate.toFixed(2);
+      const q = (document.getElementById('pos-search').value || '').toLowerCase();
+
+      const available = appState.products.filter(p =>
+        p.status === 'Disponible' &&
+        p.stock > 0 &&
+        p.cat === currentPosCategory &&
+        (p.name.toLowerCase().includes(q) || (p.size || '').toLowerCase().includes(q))
+      );
+
+      const grid = document.getElementById('pos-products-grid');
+      if (available.length === 0) {
+        grid.innerHTML = `<div class="col-span-full bg-bnCard border border-bnBorder rounded-xl p-6 text-center text-xs text-bnMuted">No hay productos disponibles en "${currentPosCategory}". Revisa tu inventario o mercancía en tránsito.</div>`;
+        return;
+      }
+
+      grid.innerHTML = available.map(p => {
+        const inCart = cart.find(c => c.id === p.id);
+        const qtyBadge = inCart ? `<span class="absolute top-2 right-2 bg-bnYellow text-black font-black text-xs w-6 h-6 rounded-full flex items-center justify-center shadow">${inCart.qty}</span>` : '';
+        return `
+          <button onclick="addToCart('${p.id}')" class="relative text-left bg-bnCard hover:bg-bnCardHover active:scale-95 border ${inCart ? 'border-bnYellow' : 'border-bnBorder'} rounded-xl p-3 transition flex flex-col justify-between min-h-[105px]">
+            ${qtyBadge}
+            <div>
+              <span class="text-[10px] text-bnMuted uppercase">${p.size || p.cat}</span>
+              <h4 class="font-bold text-xs text-bnText line-clamp-2 mt-0.5">${p.name}</h4>
+            </div>
+            <div class="mt-2 pt-2 border-t border-bnBorder/60 flex items-baseline justify-between">
+              <span class="text-sm font-black text-bnGreen">$${p.sellPriceUsd.toFixed(2)}</span>
+              <span class="text-[10px] text-bnMuted">Disp: ${p.stock}</span>
+            </div>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function addToCart(prodId) {
+      const prod = appState.products.find(p => p.id === prodId);
+      if (!prod) return;
+      const existing = cart.find(c => c.id === prodId);
+      if (existing) {
+        if (existing.qty < prod.stock) {
+          existing.qty += 1;
+        } else {
+          alert(`Stock máximo alcanzado (${prod.stock} unid.)`);
+        }
+      } else {
+        cart.push({
+          id: prod.id,
+          name: prod.name,
+          qty: 1,
+          priceUsd: prod.sellPriceUsd,
+          costUsd: prod.unitCostUsd
+        });
+      }
+      renderPOS();
+      updateCartUI();
+    }
+
+    function changeCartQty(prodId, delta) {
+      const idx = cart.findIndex(c => c.id === prodId);
+      if (idx === -1) return;
+      const prod = appState.products.find(p => p.id === prodId);
+      const newQty = cart[idx].qty + delta;
+      if (newQty <= 0) {
+        cart.splice(idx, 1);
+      } else if (prod && newQty <= prod.stock) {
+        cart[idx].qty = newQty;
+      }
+      renderPOS();
+      updateCartUI();
+    }
+
+    function clearCart() {
+      cart = [];
+      renderPOS();
+      updateCartUI();
+    }
+
+    function toggleCreditFields() {
+      const cond = document.getElementById('pos-condition').value;
+      document.getElementById('pos-credit-box').classList.toggle('hidden', cond !== 'Credito');
+      updateCartUI();
+    }
+
+    function updateCartUI() {
+      const rate = getActiveRate();
+      const container = document.getElementById('pos-cart-items');
+      if (cart.length === 0) {
+        container.innerHTML = `<div class="py-8 text-center text-xs text-bnMuted">Toca un producto para agregarlo al ticket</div>`;
+      } else {
+        container.innerHTML = cart.map(item => `
+          <div class="py-2 flex items-center justify-between gap-2 text-xs">
+            <div class="flex-1 min-w-0">
+              <div class="font-semibold text-bnText truncate">${item.name}</div>
+              <div class="text-[11px] text-bnMuted">$${item.priceUsd.toFixed(2)} c/u</div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="changeCartQty('${item.id}', -1)" class="w-6 h-6 rounded bg-bnBg border border-bnBorder text-bnText font-bold">-</button>
+              <span class="w-5 text-center font-bold">${item.qty}</span>
+              <button onclick="changeCartQty('${item.id}', 1)" class="w-6 h-6 rounded bg-bnBg border border-bnBorder text-bnText font-bold">+</button>
+            </div>
+            <div class="w-16 text-right font-bold text-bnGreen">$${(item.qty * item.priceUsd).toFixed(2)}</div>
+          </div>
+        `).join('');
+      }
+
+      const totalUsd = cart.reduce((acc, i) => acc + (i.qty * i.priceUsd), 0);
+      document.getElementById('pos-total-usd').textContent = `$${totalUsd.toFixed(2)}`;
+      document.getElementById('pos-total-bs').textContent = `Bs. ${(totalUsd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+      // Cálculos crédito
+      const down = parseFloat(document.getElementById('pos-credit-down').value) || 0;
+      const inst = Math.max(1, parseInt(document.getElementById('pos-credit-installments').value) || 1);
+      const balance = Math.max(0, totalUsd - down);
+      const quota = balance / inst;
+      document.getElementById('pos-credit-balance').textContent = `$${balance.toFixed(2)}`;
+      document.getElementById('pos-credit-quota').textContent = `$${quota.toFixed(2)}`;
+    }
+
+    function processSale(sendWhatsApp) {
+      if (cart.length === 0) {
+        alert('Agrega al menos un producto al ticket.');
+        return;
+      }
+      const rate = getActiveRate();
+      const method = document.getElementById('pos-payment-method').value;
+      const condition = document.getElementById('pos-condition').value;
+      const client = document.getElementById('pos-client-name').value.trim();
+      const phone = document.getElementById('pos-client-phone').value.replace(/\D/g, '');
+
+      const totalUsd = cart.reduce((acc, i) => acc + (i.qty * i.priceUsd), 0);
+      const totalCostUsd = cart.reduce((acc, i) => acc + (i.qty * i.costUsd), 0);
+
+      let paidUsd = totalUsd;
+      let balanceUsd = 0;
+      let days = 0;
+      let installments = 1;
+
+      if (condition === 'Credito') {
+        if (!client) {
+          alert('Para ventas a crédito debes indicar el nombre del cliente.');
+          return;
+        }
+        paidUsd = Math.min(totalUsd, parseFloat(document.getElementById('pos-credit-down').value) || 0);
+        balanceUsd = Math.max(0, totalUsd - paidUsd);
+        days = parseInt(document.getElementById('pos-credit-days').value) || 15;
+        installments = Math.max(1, parseInt(document.getElementById('pos-credit-installments').value) || 1);
+      }
+
+      // Descontar stock
+      cart.forEach(item => {
+        const prod = appState.products.find(p => p.id === item.id);
+        if (prod) prod.stock = Math.max(0, prod.stock - item.qty);
+      });
+
+      const today = new Date().toISOString().split('T')[0];
+      const saleObj = {
+        id: 'sale_' + Date.now(),
+        date: today,
+        client: client || 'Cliente Mostrador',
+        phone,
+        items: JSON.parse(JSON.stringify(cart)),
+        totalUsd,
+        totalCostUsd,
+        rate,
+        method,
+        condition,
+        paidUsd,
+        balanceUsd,
+        days,
+        installments
+      };
+
+      appState.sales.push(saleObj);
+      saveState();
+
+      if (sendWhatsApp) {
+        openWhatsAppReceipt(saleObj);
+      } else {
+        alert('Venta registrada con éxito.');
+      }
+
+      clearCart();
+      document.getElementById('pos-client-name').value = '';
+      document.getElementById('pos-client-phone').value = '';
+      document.getElementById('pos-credit-down').value = '0';
+    }
+
+    function openWhatsAppReceipt(sale) {
+      let targetPhone = sale.phone;
+      if (!targetPhone) {
+        const input = prompt('Ingresa el número de WhatsApp del cliente (ej. 584121234567):');
+        if (!input) return;
+        targetPhone = input.replace(/\D/g, '');
+      }
+
+      const lines = sale.items.map(i => `• ${i.qty}x ${i.name}: $${(i.qty * i.priceUsd).toFixed(2)}`).join('
+');
+      let msg = `*COMPROBANTE DE COMPRA*
+Fecha: ${sale.date}
+Cliente: ${sale.client}
+
+*Detalle:*
+${lines}
+
+*Total:* $${sale.totalUsd.toFixed(2)} (Bs. ${(sale.totalUsd * sale.rate).toFixed(2)})
+Método: ${sale.method}
+Condición: ${sale.condition}`;
+
+      if (sale.condition === 'Credito' && sale.balanceUsd > 0) {
+        const due = new Date();
+        due.setDate(due.getDate() + sale.days);
+        const dueStr = due.toISOString().split('T')[0];
+        const quotaVal = sale.balanceUsd / sale.installments;
+        msg += `
+
+*Plan de Crédito:*
+Abono inicial: $${sale.paidUsd.toFixed(2)}
+Saldo pendiente: $${sale.balanceUsd.toFixed(2)}
+Cuotas: ${sale.installments} cuotas de $${quotaVal.toFixed(2)}
+Plazo: ${sale.days} días (Vence: ${dueStr})`;
+      }
+
+      msg += `
+
+¡Gracias por su compra!`;
+      const url = `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`;
+      window.open(url, '_blank');
+    }
+
+    // =========================================================================
+    // INVENTARIO, EN TRÁNSITO Y PLANTILLAS CSV
+    // =========================================================================
+    function renderInventory() {
+      const q = (document.getElementById('inv-search').value || '').toLowerCase();
+      const cat = document.getElementById('inv-filter-cat').value;
+      const st = document.getElementById('inv-filter-status').value;
+
+      const filtered = appState.products.filter(p => {
+        const matchQ = p.name.toLowerCase().includes(q) || (p.size || '').toLowerCase().includes(q);
+        const matchC = cat === 'ALL' || p.cat === cat;
+        const matchS = st === 'ALL' || p.status === st;
+        return matchQ && matchC && matchS;
+      });
+
+      const tbody = document.getElementById('inv-table-body');
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-bnMuted">No se encontraron productos con ese filtro.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(p => {
+        const margin = p.unitCostUsd > 0 ? (((p.sellPriceUsd - p.unitCostUsd) / p.unitCostUsd) * 100).toFixed(0) : 100;
+        const statusBadge = p.status === 'Disponible'
+          ? `<span class="px-2 py-0.5 rounded bg-bnGreen/15 text-bnGreen font-semibold">Disponible</span>`
+          : `<span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-400 font-semibold">En Tránsito</span>`;
+
+        const receiveBtn = p.status === 'En Tránsito'
+          ? `<button onclick="confirmArrival('${p.id}')" class="bg-bnYellow text-black font-bold px-2 py-1 rounded text-[11px]">Recibir</button>`
+          : '';
+
+        return `
+          <tr class="hover:bg-bnBg/40">
+            <td class="py-2.5 px-3">
+              <div class="font-bold text-bnText">${p.name}</div>
+              <div class="text-[11px] text-bnMuted">${p.size || '-'}</div>
+            </td>
+            <td class="py-2.5 px-3 text-bnMuted">${p.cat}</td>
+            <td class="py-2.5 px-3 text-center">${statusBadge}</td>
+            <td class="py-2.5 px-3 text-right font-bold ${p.stock <= 3 ? 'text-bnRed' : 'text-bnText'}">${p.stock}</td>
+            <td class="py-2.5 px-3 text-right text-bnMuted">$${(p.unitCostUsd || 0).toFixed(3)}</td>
+            <td class="py-2.5 px-3 text-right font-bold text-bnGreen">$${(p.sellPriceUsd || 0).toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right text-bnYellow">${margin}%</td>
+            <td class="py-2.5 px-3 text-center space-x-1">
+              ${receiveBtn}
+              <button onclick="editProduct('${p.id}')" class="text-bnMuted hover:text-bnText px-1.5 py-1">✎</button>
+              <button onclick="deleteProduct('${p.id}')" class="text-bnRed hover:opacity-80 px-1.5 py-1">✕</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function confirmArrival(prodId) {
+      const prod = appState.products.find(p => p.id === prodId);
+      if (!prod) return;
+      const extraFreight = prompt(`Confirmar llegada de "${prod.name}" (${prod.stock} unid.).
+Costo unitario actual: $${prod.unitCostUsd.toFixed(3)}.
+
+Ingresa el costo adicional de flete/envío POR UNIDAD en $ (0 si no hay adicional):`, '0');
+      if (extraFreight === null) return;
+      const addUsd = parseFloat(extraFreight) || 0;
+      prod.unitCostUsd = (prod.unitCostUsd || 0) + addUsd;
+      prod.status = 'Disponible';
+      saveState();
+      alert(`¡Mercancía recibida! Nuevo costo unitario: $${prod.unitCostUsd.toFixed(3)}. Ya está disponible en el POS.`);
+    }
+
+    function openProductModal(prod = null) {
+      document.getElementById('product-modal').classList.remove('hidden');
+      if (prod) {
+        document.getElementById('modal-prod-title').textContent = 'Editar Producto';
+        document.getElementById('prod-id').value = prod.id;
+        document.getElementById('prod-name').value = prod.name;
+        document.getElementById('prod-cat').value = prod.cat;
+        document.getElementById('prod-size').value = prod.size || '';
+        document.getElementById('prod-status').value = prod.status;
+        document.getElementById('prod-stock').value = prod.stock;
+        document.getElementById('prod-cost-curr').value = 'USD';
+        document.getElementById('prod-buy-rate').value = getActiveRate();
+        document.getElementById('prod-base-cost').value = prod.unitCostUsd;
+        document.getElementById('prod-freight-cost').value = 0;
+        document.getElementById('prod-sell-price').value = prod.sellPriceUsd;
+      } else {
+        document.getElementById('modal-prod-title').textContent = 'Nuevo Producto';
+        document.getElementById('prod-id').value = '';
+        document.getElementById('prod-name').value = '';
+        document.getElementById('prod-size').value = '';
+        document.getElementById('prod-status').value = 'Disponible';
+        document.getElementById('prod-stock').value = 1;
+        document.getElementById('prod-buy-rate').value = getActiveRate();
+        document.getElementById('prod-base-cost').value = '';
+        document.getElementById('prod-freight-cost').value = 0;
+        document.getElementById('prod-sell-price').value = '';
+      }
+    }
+
+    function closeProductModal() {
+      document.getElementById('product-modal').classList.add('hidden');
+    }
+
+    function editProduct(id) {
+      const p = appState.products.find(x => x.id === id);
+      if (p) openProductModal(p);
+    }
+
+    function deleteProduct(id) {
+      if (!confirm('¿Eliminar este producto del inventario?')) return;
+      appState.products = appState.products.filter(x => x.id !== id);
+      saveState();
+    }
+
+    function saveProductForm(e) {
+      e.preventDefault();
+      const id = document.getElementById('prod-id').value;
+      const name = document.getElementById('prod-name').value.trim();
+      const cat = document.getElementById('prod-cat').value;
+      const size = document.getElementById('prod-size').value.trim();
+      const status = document.getElementById('prod-status').value;
+      const stock = parseInt(document.getElementById('prod-stock').value) || 0;
+      const curr = document.getElementById('prod-cost-curr').value;
+      const buyRate = parseFloat(document.getElementById('prod-buy-rate').value) || getActiveRate();
+      const baseCost = parseFloat(document.getElementById('prod-base-cost').value) || 0;
+      const freightCost = parseFloat(document.getElementById('prod-freight-cost').value) || 0;
+      const sellPriceUsd = parseFloat(document.getElementById('prod-sell-price').value) || 0;
+
+      const rawUnit = baseCost + freightCost;
+      const unitCostUsd = curr === 'VES' ? (rawUnit / buyRate) : rawUnit;
+
+      if (id) {
+        const idx = appState.products.findIndex(p => p.id === id);
+        if (idx !== -1) {
+          appState.products[idx] = { id, name, cat, size, status, stock, unitCostUsd, sellPriceUsd };
+        }
+      } else {
+        appState.products.push({
+          id: 'prod_' + Date.now(),
+          name, cat, size, status, stock, unitCostUsd, sellPriceUsd
+        });
+      }
+      closeProductModal();
+      saveState();
+    }
+
+    // =========================================================================
+    // PLANTILLAS CSV INSPIRADAS EN EL EXCEL DEL USUARIO
+    // =========================================================================
+    function downloadTemplateCSV(type) {
+      let csvContent = '';
+      let filename = '';
+
+      if (type === 'inventario') {
+        filename = 'Plantilla_Inventario_FinanzaPOS.csv';
+        csvContent = [
+          'Producto,Categoria,Talla_Presentacion,Estado,Unid_Por_Empaque,Cant_Empaques,Costo_Empaque_Base,Aplica_IVA,Flete_Adicional_Total,Moneda_Costo,Tasa_Compra_Bs_USD,Precio_Venta_Unit_USD',
+          'CLIPS BOLSA PEQUEÑO 20X120GR,Cantina,20 unid. (Bulto),Disponible,20,1,29339.84,NO,0,VES,914.03,2.20',
+          'ZOEK CROCANTE,Cantina,Unidad Helado,Disponible,1,6,884.15,SI,0,VES,915.75,1.60',
+          'BODY ALGODÓN MANGA CORTA,Ropa de Bebe,RN / 0-3M,En Tránsito,12,2,24.00,NO,6.00,USD,915.00,5.00'
+        ].join('
+');
+      } else if (type === 'compras_facturas') {
+        filename = 'Plantilla_Compras_Facturas_IVA.csv';
+        csvContent = [
+          'Fecha,Documento_Proveedor,Producto,Categoria,Unid_Empaque,Cant_Comprada,Base_Unit_Sin_IVA,Aplica_IVA,Tasa_Compra_Bs_USD',
+          '2026-11-15,Fact. 149082 - Barbara Salinas,CLIPS BOLSA PEQUEÑO 20X120GR,Cantina,20,1,1466.99,NO,914.03',
+          '2026-11-15,Ticket Helados Nov2026,ZOEK CROCANTE,Cantina,1,6,884.15,SI,915.75'
+        ].join('
+');
+      } else if (type === 'ventas_creditos') {
+        filename = 'Plantilla_Ventas_Creditos.csv';
+        csvContent = [
+          'Fecha_Venta,Cliente,Telefono_WhatsApp,Seccion_POS,Detalle_Items,Condicion_Pago,Monto_Total_USD,Abono_Inicial_USD,Dias_Plazo,Num_Cuotas',
+          '2026-11-21,Mariana Pérez,584125550101,Ropa de Bebe,2x Body Algodón RN,Credito,10.00,4.00,15,2'
+        ].join('
+');
+      } else if (type === 'gastos_capital') {
+        filename = 'Plantilla_Capital_Gastos.csv';
+        csvContent = [
+          'Fecha,Tipo_Movimiento,Descripcion,Moneda,Monto,Tasa_Bs_USD',
+          '2026-11-01,Capital Inicial,Capital de arranque del negocio,USD,1000.00,914.03',
+          '2026-11-18,Gasto Operativo,Bolsas y etiquetas para entregas,USD,15.00,915.00'
+        ].join('
+');
+      }
+
+      const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function uploadInventoryCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split(/?
+/).filter(l => l.trim() !== '');
+        if (lines.length < 2) {
+          alert('El archivo CSV parece vacío.');
+          return;
+        }
+        let added = 0;
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(',');
+          if (cols.length < 12) continue;
+          const name = cols[0].trim();
+          const cat = cols[1].trim() || 'Cantina';
+          const size = cols[2].trim();
+          const status = cols[3].trim() === 'En Tránsito' ? 'En Tránsito' : 'Disponible';
+          const uEmp = parseFloat(cols[4]) || 1;
+          const cEmp = parseFloat(cols[5]) || 1;
+          const totalUnid = Math.round(uEmp * cEmp);
+          const costPackBase = parseFloat(cols[6]) || 0;
+          const hasIva = cols[7].trim().toUpperCase() === 'SI';
+          const freightTotal = parseFloat(cols[8]) || 0;
+          const curr = cols[9].trim().toUpperCase() || 'USD';
+          const rate = parseFloat(cols[10]) || getActiveRate();
+          const sellPriceUsd = parseFloat(cols[11]) || 0;
+
+          const baseTotal = cEmp * costPackBase;
+          const ivaMonto = hasIva ? (baseTotal * 0.16) : 0;
+          const totalInvertido = baseTotal + ivaMonto + freightTotal;
+          const unitCostOrig = totalUnid > 0 ? (totalInvertido / totalUnid) : 0;
+          const unitCostUsd = curr === 'VES' ? (unitCostOrig / rate) : unitCostOrig;
+
+          appState.products.push({
+            id: 'csv_' + Date.now() + '_' + i,
+            name, cat, size, status,
+            stock: totalUnid,
+            unitCostUsd,
+            sellPriceUsd
+          });
+          added++;
+        }
+        saveState();
+        alert(`Se cargaron ${added} productos desde la plantilla CSV.`);
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    function exportSalesCSV() {
+      const rows = [
+        'Fecha,Cliente,Telefono,Condicion,Metodo,Total_USD,Cobrado_USD,Saldo_Pendiente_USD,Tasa'
+      ];
+      appState.sales.forEach(s => {
+        rows.push(`${s.date},"${s.client}",${s.phone},${s.condition},${s.method},${s.totalUsd.toFixed(2)},${s.paidUsd.toFixed(2)},${s.balanceUsd.toFixed(2)},${s.rate}`);
+      });
+      const blob = new Blob(['﻿' + rows.join('
+')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Ventas_FinanzaPOS_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // =========================================================================
+    // CUENTAS POR COBRAR (CRÉDITOS Y ABONOS)
+    // =========================================================================
+    function renderCredits() {
+      const pending = appState.sales.filter(s => s.balanceUsd > 0.009);
+      const container = document.getElementById('credit-cards-list');
+      if (pending.length === 0) {
+        container.innerHTML = `<div class="col-span-full bg-bnCard border border-bnBorder rounded-xl p-8 text-center text-xs text-bnMuted">¡Excelente! No tienes cuentas por cobrar pendientes.</div>`;
+        return;
+      }
+
+      container.innerHTML = pending.map(s => {
+        const quotaVal = s.balanceUsd / (s.installments || 1);
+        return `
+          <div class="bg-bnCard border border-bnBorder rounded-xl p-4 space-y-3">
+            <div class="flex justify-between items-start">
+              <div>
+                <h4 class="font-bold text-sm text-bnText">${s.client}</h4>
+                <p class="text-[11px] text-bnMuted">Compra: ${s.date} • Plazo: ${s.days} días (${s.installments} cuotas)</p>
+              </div>
+              <span class="px-2.5 py-1 rounded-lg bg-bnRed/15 text-bnRed font-bold text-xs">Debe: $${s.balanceUsd.toFixed(2)}</span>
+            </div>
+            <div class="bg-bnBg rounded-lg p-2.5 grid grid-cols-3 gap-2 text-xs">
+              <div><span class="text-bnMuted block text-[10px]">Total Venta</span><b>$${s.totalUsd.toFixed(2)}</b></div>
+              <div><span class="text-bnMuted block text-[10px]">Abonado</span><b class="text-bnGreen">$${s.paidUsd.toFixed(2)}</b></div>
+              <div><span class="text-bnMuted block text-[10px]">Cuota Ref.</span><b class="text-bnYellow">$${quotaVal.toFixed(2)}</b></div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-1">
+              <button onclick="registerPayment('${s.id}')" class="bg-bnGreen text-black font-bold py-2 rounded-lg text-xs">
+                + Registrar Abono
+              </button>
+              <button onclick="sendCreditReminder('${s.id}')" class="bg-[#25D366] text-black font-bold py-2 rounded-lg text-xs">
+                Cobrar WhatsApp
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function registerPayment(saleId) {
+      const sale = appState.sales.find(s => s.id === saleId);
+      if (!sale) return;
+      const amtStr = prompt(`Saldo pendiente de ${sale.client}: $${sale.balanceUsd.toFixed(2)}.
+Ingresa el monto del abono en USD ($):`, sale.balanceUsd.toFixed(2));
+      if (!amtStr) return;
+      const amt = parseFloat(amtStr);
+      if (isNaN(amt) || amt <= 0) return;
+      sale.paidUsd += Math.min(sale.balanceUsd, amt);
+      sale.balanceUsd = Math.max(0, sale.totalUsd - sale.paidUsd);
+      saveState();
+    }
+
+    function sendCreditReminder(saleId) {
+      const sale = appState.sales.find(s => s.id === saleId);
+      if (!sale) return;
+      let phone = sale.phone;
+      if (!phone) {
+        const inp = prompt('Ingresa el WhatsApp del cliente (ej: 584121234567):');
+        if (!inp) return;
+        phone = inp.replace(/\D/g, '');
+        sale.phone = phone;
+        saveState();
+      }
+      const msg = `Hola *${sale.client}*, te saludamos para recordarte tu estado de cuenta pendiente:
+
+• Total compra: $${sale.totalUsd.toFixed(2)}
+• Abonado: $${sale.paidUsd.toFixed(2)}
+• *Saldo pendiente: $${sale.balanceUsd.toFixed(2)}*
+
+Quedamos atentos a tu pago. ¡Muchas gracias!`;
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    // =========================================================================
+    // MOVIMIENTOS DE CAPITAL Y CAJA CHICA
+    // =========================================================================
+    function addFinancialMovement(e) {
+      e.preventDefault();
+      const type = document.getElementById('mov-type').value;
+      const desc = document.getElementById('mov-desc').value.trim();
+      const currency = document.getElementById('mov-currency').value;
+      const amount = parseFloat(document.getElementById('mov-amount').value) || 0;
+      const rate = getActiveRate();
+      const usdEquiv = currency === 'VES' ? (amount / rate) : amount;
+
+      appState.movements.push({
+        id: 'mov_' + Date.now(),
+        date: new Date().toISOString().split('T')[0],
+        type, desc, currency, amount, rate, usdEquiv
+      });
+      document.getElementById('mov-desc').value = '';
+      document.getElementById('mov-amount').value = '';
+      saveState();
+    }
+
+    function deleteMovement(id) {
+      if (!confirm('¿Eliminar este registro?')) return;
+      appState.movements = appState.movements.filter(m => m.id !== id);
+      saveState();
+    }
+
+    function renderMovements() {
+      const tbody = document.getElementById('mov-table-body');
+      if (appState.movements.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-5 text-center text-bnMuted">Sin movimientos registrados.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = [...appState.movements].reverse().map(m => {
+        const badge = m.type === 'Gasto Operativo'
+          ? `<span class="px-2 py-0.5 rounded bg-bnRed/15 text-bnRed font-semibold">${m.type}</span>`
+          : `<span class="px-2 py-0.5 rounded bg-bnGreen/15 text-bnGreen font-semibold">${m.type}</span>`;
+        return `
+          <tr class="hover:bg-bnBg/40">
+            <td class="py-2.5 px-3 text-bnMuted">${m.date}</td>
+            <td class="py-2.5 px-3">${badge}</td>
+            <td class="py-2.5 px-3 text-bnText">${m.desc}</td>
+            <td class="py-2.5 px-3 text-right">${m.currency} ${m.amount.toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right text-bnMuted">${m.rate.toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right font-bold text-bnText">$${m.usdEquiv.toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-center"><button onclick="deleteMovement('${m.id}')" class="text-bnRed">✕</button></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // RESPALDO JSON (SINCRONIZACIÓN ENTRE LAPTOP E IPHONE)
+    // =========================================================================
+    function exportBackupJSON() {
+      const dataStr = JSON.stringify(appState, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Respaldo_FinanzaPOS_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importBackupJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed && parsed.rates && Array.isArray(parsed.products)) {
+            appState = parsed;
+            saveState();
+            alert('¡Respaldo importado con éxito! Todos tus datos están sincronizados.');
+          } else {
+            alert('El archivo JSON no tiene el formato válido de FinanzaPOS.');
+          }
+        } catch (err) {
+          alert('Error leyendo el archivo JSON.');
+        }
+        event.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    // =========================================================================
+    // ACTUALIZACIÓN GLOBAL DE UI
+    // =========================================================================
+    function refreshAllUI() {
+      const activeRate = getActiveRate();
+      document.getElementById('mob-rate-badge').textContent = activeRate.toFixed(2);
+      document.getElementById('side-active-rate').textContent = activeRate.toFixed(2);
+      document.getElementById('side-bcv-rate').textContent = parseFloat(appState.rates.bcv).toFixed(2);
+      document.getElementById('side-par-rate').textContent = parseFloat(appState.rates.paralela).toFixed(2);
+      document.getElementById('cfg-rate-bcv').value = appState.rates.bcv;
+      document.getElementById('cfg-rate-par').value = appState.rates.paralela;
+      document.getElementById('dash-rate-selector').value = appState.rates.activeType;
+
+      const cxcCount = appState.sales.filter(s => s.balanceUsd > 0.009).length;
+      const badgeCred = document.getElementById('badge-creditos');
+      if (cxcCount > 0) {
+        badgeCred.textContent = cxcCount;
+        badgeCred.classList.remove('hidden');
+      } else {
+        badgeCred.classList.add('hidden');
+      }
+
+      renderDashboard();
+      renderPOS();
+      updateCartUI();
+      renderInventory();
+      renderCredits();
+      renderMovements();
+    }
+
+    window.addEventListener('DOMContentLoaded', loadState);
+  </script>
+</body>
+</html>
