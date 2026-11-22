@@ -7,6 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>FinanzaPOS Pro — Control de Inventario, POS y Viabilidad</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -118,16 +119,25 @@
       </nav>
     </div>
 
-    <!-- Indicador Tasas en Sidebar Desktop -->
-    <div class="hidden md:block p-4 m-4 rounded-xl bg-bnBg border border-bnBorder">
-      <div class="text-xs text-bnMuted mb-1">Tasa Activa Operación</div>
+    <!-- Indicador Tasas en Sidebar Desktop (Editable directamente) -->
+    <div class="hidden md:block p-3.5 m-4 rounded-xl bg-bnBg border border-bnBorder space-y-2.5">
+      <div class="flex items-center justify-between text-xs text-bnMuted">
+        <span>Tasa Activa Operación</span>
+        <span class="text-[10px] px-1.5 py-0.5 rounded bg-bnYellow/15 text-bnYellow font-semibold" id="side-rate-label">Paralela</span>
+      </div>
       <div class="flex items-baseline justify-between">
-        <span class="text-lg font-bold text-bnYellow" id="side-active-rate">915.00</span>
+        <span class="text-xl font-black text-bnYellow" id="side-active-rate">915.75</span>
         <span class="text-xs text-bnMuted">Bs / $</span>
       </div>
-      <div class="mt-2 pt-2 border-t border-bnBorder flex justify-between text-[11px] text-bnMuted">
-        <span>BCV: <b id="side-bcv-rate" class="text-bnText">914.03</b></span>
-        <span>Par: <b id="side-par-rate" class="text-bnText">915.75</b></span>
+      <div class="pt-2 border-t border-bnBorder space-y-1.5 text-[11px]">
+        <div class="flex items-center justify-between gap-1">
+          <span class="text-bnMuted">BCV:</span>
+          <input type="number" step="0.01" id="side-input-bcv" onchange="quickUpdateRate('bcv', this.value)" class="w-24 bg-bnCard border border-bnBorder focus:border-bnYellow rounded px-2 py-0.5 text-right text-bnText font-bold !text-xs" />
+        </div>
+        <div class="flex items-center justify-between gap-1">
+          <span class="text-bnMuted">Par:</span>
+          <input type="number" step="0.01" id="side-input-par" onchange="quickUpdateRate('paralela', this.value)" class="w-24 bg-bnCard border border-bnBorder focus:border-bnYellow rounded px-2 py-0.5 text-right text-bnText font-bold !text-xs" />
+        </div>
       </div>
     </div>
   </aside>
@@ -245,7 +255,7 @@
       <div class="bg-bnCard border border-bnBorder rounded-xl p-4 md:p-5">
         <div class="flex items-center justify-between mb-4">
           <h3 class="font-bold text-sm md:text-base text-bnText">Últimas Operaciones de Venta</h3>
-          <button onclick="exportSalesCSV()" class="text-xs bg-bnBg hover:bg-bnCardHover border border-bnBorder text-bnText px-3 py-1.5 rounded-lg">Exportar Ventas CSV</button>
+          <button onclick="exportSalesCSV()" class="text-xs bg-bnBg hover:bg-bnCardHover border border-bnBorder text-bnText px-3 py-1.5 rounded-lg">Exportar Ventas XLSX</button>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse text-xs md:text-sm">
@@ -338,10 +348,11 @@
               </div>
               <div>
                 <label class="block text-[11px] text-bnMuted mb-1">Condición</label>
-                <select id="pos-condition" onchange="toggleCreditFields()" class="w-full bg-bnBg border border-bnBorder rounded-lg px-2.5 py-2 text-xs text-bnText">
-                  <option value="Contado">Contado</option>
-                  <option value="Credito">Crédito / Cuotas</option>
-                </select>
+                <input type="hidden" id="pos-condition" value="Contado" />
+                <div class="grid grid-cols-2 gap-1.5">
+                  <button type="button" id="btn-cond-contado" onclick="setSaleCondition('Contado')" class="py-2 rounded-lg text-xs font-bold bg-bnYellow text-black transition">Contado</button>
+                  <button type="button" id="btn-cond-credito" onclick="setSaleCondition('Credito')" class="py-2 rounded-lg text-xs font-bold bg-bnBg border border-bnBorder text-bnMuted hover:text-bnText transition">Crédito</button>
+                </div>
               </div>
             </div>
 
@@ -355,15 +366,15 @@
               <div id="pos-credit-box" class="hidden grid grid-cols-3 gap-2 pt-1">
                 <div>
                   <label class="block text-[10px] text-bnMuted">Abono Inicial ($)</label>
-                  <input type="number" step="0.01" id="pos-credit-down" value="0" oninput="updateCartUI()" class="w-full bg-bnCard border border-bnBorder rounded-lg px-2 py-1 text-xs text-bnText" />
+                  <input type="number" step="0.01" id="pos-credit-down" value="0" min="0" oninput="updateCartUI()" class="w-full bg-bnCard border border-bnBorder rounded-lg px-2 py-1 text-xs text-bnText" />
                 </div>
                 <div>
                   <label class="block text-[10px] text-bnMuted">Plazo (Días)</label>
-                  <input type="number" id="pos-credit-days" value="15" oninput="updateCartUI()" class="w-full bg-bnCard border border-bnBorder rounded-lg px-2 py-1 text-xs text-bnText" />
+                  <input type="number" id="pos-credit-days" value="0" min="0" oninput="updateCartUI()" class="w-full bg-bnCard border border-bnBorder rounded-lg px-2 py-1 text-xs text-bnText" />
                 </div>
                 <div>
                   <label class="block text-[10px] text-bnMuted">N° Cuotas</label>
-                  <input type="number" id="pos-credit-installments" value="2" min="1" oninput="updateCartUI()" class="w-full bg-bnCard border border-bnBorder rounded-lg px-2 py-1 text-xs text-bnText" />
+                  <input type="number" id="pos-credit-installments" value="0" min="0" oninput="updateCartUI()" class="w-full bg-bnCard border border-bnBorder rounded-lg px-2 py-1 text-xs text-bnText" />
                 </div>
                 <div class="col-span-3 text-[11px] text-bnYellow flex justify-between pt-1">
                   <span>Saldo pendiente: <b id="pos-credit-balance">$0.00</b></span>
@@ -397,11 +408,11 @@
         </div>
         <div class="flex flex-wrap gap-2">
           <button onclick="downloadTemplateCSV('inventario')" class="bg-bnCard hover:bg-bnCardHover border border-bnBorder text-bnYellow text-xs font-semibold px-3 py-2 rounded-xl">
-            ⬇ Plantilla Inventario CSV
+            ⬇ Plantilla Inventario XLSX
           </button>
           <label class="bg-bnYellow hover:bg-bnYellowHover text-black text-xs font-bold px-3 py-2 rounded-xl cursor-pointer">
-            ⬆ Subir CSV Masivo
-            <input type="file" accept=".csv" onchange="uploadInventoryCSV(event)" class="hidden" />
+            ⬆ Subir Excel (.XLSX)
+            <input type="file" accept=".xlsx,.xls" onchange="uploadInventoryCSV(event)" class="hidden" />
           </label>
           <button onclick="openProductModal()" class="bg-bnGreen text-black text-xs font-bold px-3 py-2 rounded-xl">
             + Nuevo Producto
@@ -458,7 +469,7 @@
           <p class="text-xs text-bnMuted">Gestiona saldos pendientes, registra abonos y envía recordatorios por WhatsApp.</p>
         </div>
         <button onclick="downloadTemplateCSV('ventas_creditos')" class="bg-bnCard border border-bnBorder text-bnYellow text-xs font-semibold px-3 py-2 rounded-xl">
-          ⬇ Plantilla Créditos CSV
+          ⬇ Plantilla Créditos XLSX
         </button>
       </div>
 
@@ -477,7 +488,7 @@
           <p class="text-xs text-bnMuted">Registra el capital de arranque ($1,000 u otro monto), inyecciones o gastos operativos.</p>
         </div>
         <button onclick="downloadTemplateCSV('gastos_capital')" class="bg-bnCard border border-bnBorder text-bnYellow text-xs font-semibold px-3 py-2 rounded-xl">
-          ⬇ Plantilla Capital/Gastos CSV
+          ⬇ Plantilla Capital/Gastos XLSX
         </button>
       </div>
 
@@ -575,16 +586,20 @@
               <input type="file" accept=".json" onchange="importBackupJSON(event)" class="hidden" />
             </label>
           </div>
-          <div class="pt-3 border-t border-bnBorder flex justify-between items-center">
-            <span class="text-[11px] text-bnMuted">Cargar datos de ejemplo (Facturas Nov 2026):</span>
-            <button onclick="loadDemoData()" class="text-xs text-bnYellow hover:underline">Restaurar Demo</button>
+          <div class="pt-3 border-t border-bnBorder flex flex-wrap justify-between items-center gap-2">
+            <button onclick="loadDemoData()" class="text-xs bg-bnBg hover:bg-bnCardHover border border-bnBorder text-bnYellow font-semibold px-3 py-2 rounded-lg">
+              ↻ Cargar Datos Demo
+            </button>
+            <button onclick="resetAllDataToZero()" class="text-xs bg-bnRed/15 hover:bg-bnRed/25 border border-bnRed/40 text-bnRed font-bold px-3 py-2 rounded-lg">
+              🗑 Borrar Todo / Reiniciar en Cero
+            </button>
           </div>
         </div>
       </div>
 
       <!-- Descarga de todas las Plantillas CSV -->
       <div class="bg-bnCard border border-bnBorder rounded-xl p-5 space-y-3">
-        <h3 class="font-bold text-sm text-bnText">3. Plantillas CSV Adaptadas (Estilo Facturas Mayorista / Helados / Ropa)</h3>
+        <h3 class="font-bold text-sm text-bnText">3. Plantillas Excel (.XLSX) Adaptadas (Estilo Facturas Mayorista / Helados / Ropa)</h3>
         <p class="text-xs text-bnMuted">Descarga cualquiera de estas 4 plantillas listas para abrir en Excel y estructurar tus cargas masivas o reportes:</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-1">
           <button onclick="downloadTemplateCSV('inventario')" class="bg-bnBg hover:bg-bnCardHover border border-bnBorder p-3 rounded-xl text-left">
@@ -726,6 +741,23 @@
       refreshAllUI();
     }
 
+    function resetAllDataToZero() {
+      if (!confirm('⚠️ ATENCIÓN: Se borrarán TODAS las ventas, productos, créditos, capital y gastos registrados para dejar el sistema en cero.\n\n¿Deseas continuar?')) return;
+      appState = {
+        rates: {
+          bcv: appState.rates.bcv || 914.03,
+          paralela: appState.rates.paralela || 915.75,
+          activeType: appState.rates.activeType || 'paralela'
+        },
+        products: [],
+        sales: [],
+        movements: []
+      };
+      cart = [];
+      saveState();
+      alert('✅ Sistema reiniciado en cero. Listo para comenzar desde limpio.');
+    }
+
     function loadDemoData(confirmReset = true) {
       if (confirmReset && !confirm('¿Cargar datos de ejemplo basados en tus compras de Nov 2026? Esto reemplazará los datos actuales.')) return;
       appState = {
@@ -789,6 +821,14 @@
     function changeActiveRateType(type) {
       appState.rates.activeType = type;
       saveState();
+    }
+
+    function quickUpdateRate(which, val) {
+      const num = parseFloat(val);
+      if (num > 0) {
+        appState.rates[which] = num;
+        saveState();
+      }
     }
 
     function saveRates() {
@@ -1002,6 +1042,20 @@
       updateCartUI();
     }
 
+    function setSaleCondition(cond) {
+      document.getElementById('pos-condition').value = cond;
+      const btnCont = document.getElementById('btn-cond-contado');
+      const btnCred = document.getElementById('btn-cond-credito');
+      if (cond === 'Contado') {
+        btnCont.className = 'py-2 rounded-lg text-xs font-bold bg-bnYellow text-black transition';
+        btnCred.className = 'py-2 rounded-lg text-xs font-bold bg-bnBg border border-bnBorder text-bnMuted hover:text-bnText transition';
+      } else {
+        btnCred.className = 'py-2 rounded-lg text-xs font-bold bg-bnYellow text-black transition';
+        btnCont.className = 'py-2 rounded-lg text-xs font-bold bg-bnBg border border-bnBorder text-bnMuted hover:text-bnText transition';
+      }
+      toggleCreditFields();
+    }
+
     function toggleCreditFields() {
       const cond = document.getElementById('pos-condition').value;
       document.getElementById('pos-credit-box').classList.toggle('hidden', cond !== 'Credito');
@@ -1036,9 +1090,9 @@
 
       // Cálculos crédito
       const down = parseFloat(document.getElementById('pos-credit-down').value) || 0;
-      const inst = Math.max(1, parseInt(document.getElementById('pos-credit-installments').value) || 1);
+      const inst = parseInt(document.getElementById('pos-credit-installments').value) || 0;
       const balance = Math.max(0, totalUsd - down);
-      const quota = balance / inst;
+      const quota = inst > 0 ? (balance / inst) : balance;
       document.getElementById('pos-credit-balance').textContent = `$${balance.toFixed(2)}`;
       document.getElementById('pos-credit-quota').textContent = `$${quota.toFixed(2)}`;
     }
@@ -1060,7 +1114,7 @@
       let paidUsd = totalUsd;
       let balanceUsd = 0;
       let days = 0;
-      let installments = 1;
+      let installments = 0;
 
       if (condition === 'Credito') {
         if (!client) {
@@ -1069,8 +1123,8 @@
         }
         paidUsd = Math.min(totalUsd, parseFloat(document.getElementById('pos-credit-down').value) || 0);
         balanceUsd = Math.max(0, totalUsd - paidUsd);
-        days = parseInt(document.getElementById('pos-credit-days').value) || 15;
-        installments = Math.max(1, parseInt(document.getElementById('pos-credit-installments').value) || 1);
+        days = parseInt(document.getElementById('pos-credit-days').value) || 0;
+        installments = parseInt(document.getElementById('pos-credit-installments').value) || 0;
       }
 
       // Descontar stock
@@ -1110,6 +1164,199 @@
       document.getElementById('pos-client-name').value = '';
       document.getElementById('pos-client-phone').value = '';
       document.getElementById('pos-credit-down').value = '0';
+      document.getElementById('pos-credit-days').value = '0';
+      document.getElementById('pos-credit-installments').value = '0';
+      setSaleCondition('Contado');
+    }
+
+    function generateInvoiceImageBlob(sale, isReminder = false) {
+      return new Promise((resolve) => {
+        const canvas = document.createElement('canvas');
+        const width = 720;
+        const items = sale.items || [];
+        const baseHeight = 520 + (items.length * 46) + (sale.condition === 'Credito' ? 140 : 0);
+        canvas.width = width;
+        canvas.height = Math.max(620, baseHeight);
+        const ctx = canvas.getContext('2d');
+
+        // Fondo tipo factura elegante
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Franja superior oscura con acento amarillo
+        ctx.fillStyle = '#181A20';
+        ctx.fillRect(0, 0, width, 125);
+        ctx.fillStyle = '#FCD535';
+        ctx.fillRect(0, 125, width, 8);
+
+        // Título Factura / Nota de Entrega
+        ctx.fillStyle = '#FCD535';
+        ctx.font = 'bold 28px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText(isReminder ? 'ESTADO DE CUENTA / FACTURA' : 'NOTA DE ENTREGA / FACTURA', 36, 54);
+
+        ctx.fillStyle = '#EAECEF';
+        ctx.font = '15px -apple-system, BlinkMacSystemFont, sans-serif';
+        ctx.fillText('Ropa de Bebé & Cantina  •  Comprobante Digital', 36, 84);
+
+        const invoiceNum = String(sale.id || '').replace(/\D/g, '').slice(-6) || '000101';
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#FCD535';
+        ctx.font = 'bold 18px monospace';
+        ctx.fillText(`N° #${invoiceNum}`, width - 36, 54);
+        ctx.fillStyle = '#EAECEF';
+        ctx.font = '14px sans-serif';
+        ctx.fillText(`Fecha: ${sale.date}`, width - 36, 82);
+        ctx.textAlign = 'left';
+
+        // Datos del Cliente y Operación
+        let y = 168;
+        ctx.fillStyle = '#F8FAFC';
+        ctx.fillRect(36, y - 24, width - 72, 86);
+        ctx.strokeStyle = '#E2E8F0';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(36, y - 24, width - 72, 86);
+
+        ctx.fillStyle = '#64748B';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText('CLIENTE:', 52, y);
+        ctx.fillText('CONDICIÓN:', 410, y);
+
+        ctx.fillStyle = '#0F172A';
+        ctx.font = 'bold 17px sans-serif';
+        ctx.fillText(sale.client || 'Cliente Mostrador', 52, y + 22);
+        ctx.fillText(sale.condition === 'Credito' ? 'CRÉDITO / CUOTAS' : 'CONTADO', 410, y + 22);
+
+        ctx.fillStyle = '#475569';
+        ctx.font = '13px sans-serif';
+        ctx.fillText(`Método: ${sale.method}  |  Tasa Ref: Bs. ${Number(sale.rate).toFixed(2)}/$`, 52, y + 48);
+
+        // Encabezado tabla de productos
+        y += 96;
+        ctx.fillStyle = '#181A20';
+        ctx.fillRect(36, y, width - 72, 36);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText('CANT.', 50, y + 23);
+        ctx.fillText('DESCRIPCIÓN DEL PRODUCTO', 115, y + 23);
+        ctx.textAlign = 'right';
+        ctx.fillText('P. UNIT', 565, y + 23);
+        ctx.fillText('SUBTOTAL', width - 50, y + 23);
+        ctx.textAlign = 'left';
+
+        y += 36;
+        items.forEach((item, idx) => {
+          if (idx % 2 === 1) {
+            ctx.fillStyle = '#F8FAFC';
+            ctx.fillRect(36, y, width - 72, 42);
+          }
+          ctx.fillStyle = '#0F172A';
+          ctx.font = 'bold 14px sans-serif';
+          ctx.fillText(`${item.qty}`, 58, y + 26);
+
+          ctx.font = '14px sans-serif';
+          const shortName = item.name.length > 34 ? item.name.slice(0, 33) + '…' : item.name;
+          ctx.fillText(shortName, 115, y + 26);
+
+          ctx.textAlign = 'right';
+          ctx.fillStyle = '#475569';
+          ctx.fillText(`$${Number(item.priceUsd).toFixed(2)}`, 565, y + 26);
+          ctx.fillStyle = '#0F172A';
+          ctx.font = 'bold 14px sans-serif';
+          ctx.fillText(`$${(item.qty * item.priceUsd).toFixed(2)}`, width - 50, y + 26);
+          ctx.textAlign = 'left';
+
+          ctx.strokeStyle = '#E2E8F0';
+          ctx.beginPath();
+          ctx.moveTo(36, y + 42);
+          ctx.lineTo(width - 36, y + 42);
+          ctx.stroke();
+          y += 42;
+        });
+
+        // Bloque de Totales
+        y += 24;
+        ctx.fillStyle = '#F1F5F9';
+        ctx.fillRect(width - 340, y, 304, 84);
+        ctx.fillStyle = '#0F172A';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.fillText('TOTAL USD:', width - 322, y + 32);
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#059669';
+        ctx.font = 'bold 24px sans-serif';
+        ctx.fillText(`$${Number(sale.totalUsd).toFixed(2)}`, width - 52, y + 34);
+
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#475569';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('Total Bs.:', width - 322, y + 64);
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.fillText(`Bs. ${(sale.totalUsd * sale.rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, width - 52, y + 64);
+        ctx.textAlign = 'left';
+
+        // Si es crédito, mostrar cuadro de saldo y cuotas
+        if (sale.condition === 'Credito') {
+          y += 104;
+          ctx.fillStyle = '#FEFCE8';
+          ctx.fillRect(36, y, width - 72, 92);
+          ctx.strokeStyle = '#FACC15';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(36, y, width - 72, 92);
+
+          ctx.fillStyle = '#854D0E';
+          ctx.font = 'bold 14px sans-serif';
+          ctx.fillText('DETALLE DE FINANCIAMIENTO / CRÉDITO', 52, y + 26);
+
+          ctx.fillStyle = '#1E293B';
+          ctx.font = '14px sans-serif';
+          ctx.fillText(`Abonado: $${Number(sale.paidUsd).toFixed(2)}   |   Saldo Pendiente: $${Number(sale.balanceUsd).toFixed(2)}`, 52, y + 52);
+
+          const instTxt = sale.installments > 0
+            ? `${sale.installments} cuotas de $${(sale.balanceUsd / sale.installments).toFixed(2)}`
+            : 'Pago único / flexible';
+          const daysTxt = sale.days > 0 ? `Plazo: ${sale.days} días` : 'Sin plazo fijo';
+          ctx.fillText(`${daysTxt}   |   Plan: ${instTxt}`, 52, y + 76);
+        }
+
+        // Pie de factura
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = '13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('¡Gracias por su preferencia! Conserve esta factura como soporte de su operación.', width / 2, canvas.height - 28);
+
+        canvas.toBlob((blob) => resolve(blob), 'image/png');
+      });
+    }
+
+    async function shareOrDownloadInvoiceAndOpenWA(sale, targetPhone, msg, isReminder = false) {
+      const invoiceBlob = await generateInvoiceImageBlob(sale, isReminder);
+      const fileName = `Factura_${(sale.client || 'Cliente').replace(/\s+/g, '_')}_${sale.date}.png`;
+      const file = new File([invoiceBlob], fileName, { type: 'image/png' });
+
+      // 1. En iPhone / móviles con soporte Web Share API de archivos, permite compartir imagen + texto directo a WhatsApp
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'Factura Digital',
+            text: msg
+          });
+          return;
+        } catch (err) {
+          // Si el usuario cancela o falla el share nativo, continúa con descarga + enlace wa.me
+        }
+      }
+
+      // 2. En PC / navegadores de escritorio: descarga automáticamente la imagen de la factura y abre WhatsApp con el mensaje listo para pegarla/adjuntarla
+      const urlImg = URL.createObjectURL(invoiceBlob);
+      const a = document.createElement('a');
+      a.href = urlImg;
+      a.download = fileName;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(urlImg), 4000);
+
+      const waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`;
+      window.open(waUrl, '_blank');
     }
 
     function openWhatsAppReceipt(sale) {
@@ -1120,13 +1367,12 @@
         targetPhone = input.replace(/\D/g, '');
       }
 
-      const lines = sale.items.map(i => `• ${i.qty}x ${i.name}: $${(i.qty * i.priceUsd).toFixed(2)}`).join('
-');
-      let msg = `*COMPROBANTE DE COMPRA*
+      const lines = sale.items.map(i => `• ${i.qty} unid. x ${i.name} ($${i.priceUsd.toFixed(2)} c/u) = $${(i.qty * i.priceUsd).toFixed(2)}`).join('\n');
+      let msg = `*COMPROBANTE / FACTURA DIGITAL*
 Fecha: ${sale.date}
 Cliente: ${sale.client}
 
-*Detalle:*
+*Descripción de la compra:*
 ${lines}
 
 *Total:* $${sale.totalUsd.toFixed(2)} (Bs. ${(sale.totalUsd * sale.rate).toFixed(2)})
@@ -1134,24 +1380,29 @@ Método: ${sale.method}
 Condición: ${sale.condition}`;
 
       if (sale.condition === 'Credito' && sale.balanceUsd > 0) {
-        const due = new Date();
-        due.setDate(due.getDate() + sale.days);
-        const dueStr = due.toISOString().split('T')[0];
-        const quotaVal = sale.balanceUsd / sale.installments;
+        const quotaTxt = sale.installments > 0
+          ? `${sale.installments} cuotas de $${(sale.balanceUsd / sale.installments).toFixed(2)}`
+          : 'A convenir';
+        let dueLine = '';
+        if (sale.days > 0) {
+          const due = new Date();
+          due.setDate(due.getDate() + sale.days);
+          dueLine = `\nPlazo: ${sale.days} días (Vence: ${due.toISOString().split('T')[0]})`;
+        }
         msg += `
 
 *Plan de Crédito:*
 Abono inicial: $${sale.paidUsd.toFixed(2)}
 Saldo pendiente: $${sale.balanceUsd.toFixed(2)}
-Cuotas: ${sale.installments} cuotas de $${quotaVal.toFixed(2)}
-Plazo: ${sale.days} días (Vence: ${dueStr})`;
+Cuotas: ${quotaTxt}${dueLine}`;
       }
 
       msg += `
 
+_(Adjunto imagen de su factura digital)_
 ¡Gracias por su compra!`;
-      const url = `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`;
-      window.open(url, '_blank');
+
+      shareOrDownloadInvoiceAndOpenWA(sale, targetPhone, msg, false);
     }
 
     // =========================================================================
@@ -1299,122 +1550,146 @@ Ingresa el costo adicional de flete/envío POR UNIDAD en $ (0 si no hay adiciona
     }
 
     // =========================================================================
-    // PLANTILLAS CSV INSPIRADAS EN EL EXCEL DEL USUARIO
+    // PLANTILLAS EXCEL (.XLSX) INSPIRADAS EN EL EXCEL DEL USUARIO
     // =========================================================================
     function downloadTemplateCSV(type) {
-      let csvContent = '';
+      if (typeof XLSX === 'undefined') {
+        alert('Error: No se cargó la librería Excel (SheetJS). Verifica tu conexión a internet.');
+        return;
+      }
+      let rows = [];
       let filename = '';
+      let sheetName = 'Plantilla';
 
       if (type === 'inventario') {
-        filename = 'Plantilla_Inventario_FinanzaPOS.csv';
-        csvContent = [
-          'Producto,Categoria,Talla_Presentacion,Estado,Unid_Por_Empaque,Cant_Empaques,Costo_Empaque_Base,Aplica_IVA,Flete_Adicional_Total,Moneda_Costo,Tasa_Compra_Bs_USD,Precio_Venta_Unit_USD',
-          'CLIPS BOLSA PEQUEÑO 20X120GR,Cantina,20 unid. (Bulto),Disponible,20,1,29339.84,NO,0,VES,914.03,2.20',
-          'ZOEK CROCANTE,Cantina,Unidad Helado,Disponible,1,6,884.15,SI,0,VES,915.75,1.60',
-          'BODY ALGODÓN MANGA CORTA,Ropa de Bebe,RN / 0-3M,En Tránsito,12,2,24.00,NO,6.00,USD,915.00,5.00'
-        ].join('
-');
+        filename = 'Plantilla_Inventario_FinanzaPOS.xlsx';
+        sheetName = 'Inventario';
+        rows = [
+          ['Producto', 'Categoria', 'Talla_Presentacion', 'Estado', 'Unid_Por_Empaque', 'Cant_Empaques', 'Costo_Empaque_Base', 'Aplica_IVA', 'Flete_Adicional_Total', 'Moneda_Costo', 'Tasa_Compra_Bs_USD', 'Precio_Venta_Unit_USD'],
+          ['CLIPS BOLSA PEQUEÑO 20X120GR', 'Cantina', '20 unid. (Bulto)', 'Disponible', 20, 1, 29339.84, 'NO', 0, 'VES', 914.03, 2.20],
+          ['ZOEK CROCANTE', 'Cantina', 'Unidad Helado', 'Disponible', 1, 6, 884.15, 'SI', 0, 'VES', 915.75, 1.60],
+          ['BODY ALGODÓN MANGA CORTA', 'Ropa de Bebe', 'RN / 0-3M', 'En Tránsito', 12, 2, 24.00, 'NO', 6.00, 'USD', 915.00, 5.00]
+        ];
       } else if (type === 'compras_facturas') {
-        filename = 'Plantilla_Compras_Facturas_IVA.csv';
-        csvContent = [
-          'Fecha,Documento_Proveedor,Producto,Categoria,Unid_Empaque,Cant_Comprada,Base_Unit_Sin_IVA,Aplica_IVA,Tasa_Compra_Bs_USD',
-          '2026-11-15,Fact. 149082 - Barbara Salinas,CLIPS BOLSA PEQUEÑO 20X120GR,Cantina,20,1,1466.99,NO,914.03',
-          '2026-11-15,Ticket Helados Nov2026,ZOEK CROCANTE,Cantina,1,6,884.15,SI,915.75'
-        ].join('
-');
+        filename = 'Plantilla_Compras_Facturas_IVA.xlsx';
+        sheetName = 'Compras_Facturas';
+        rows = [
+          ['Fecha', 'Documento_Proveedor', 'Producto', 'Categoria', 'Unid_Empaque', 'Cant_Comprada', 'Base_Unit_Sin_IVA', 'Aplica_IVA', 'Tasa_Compra_Bs_USD'],
+          ['2026-11-15', 'Fact. 149082 - Barbara Salinas', 'CLIPS BOLSA PEQUEÑO 20X120GR', 'Cantina', 20, 1, 1466.99, 'NO', 914.03],
+          ['2026-11-15', 'Ticket Helados Nov2026', 'ZOEK CROCANTE', 'Cantina', 1, 6, 884.15, 'SI', 915.75]
+        ];
       } else if (type === 'ventas_creditos') {
-        filename = 'Plantilla_Ventas_Creditos.csv';
-        csvContent = [
-          'Fecha_Venta,Cliente,Telefono_WhatsApp,Seccion_POS,Detalle_Items,Condicion_Pago,Monto_Total_USD,Abono_Inicial_USD,Dias_Plazo,Num_Cuotas',
-          '2026-11-21,Mariana Pérez,584125550101,Ropa de Bebe,2x Body Algodón RN,Credito,10.00,4.00,15,2'
-        ].join('
-');
+        filename = 'Plantilla_Ventas_Creditos.xlsx';
+        sheetName = 'Ventas_Creditos';
+        rows = [
+          ['Fecha_Venta', 'Cliente', 'Telefono_WhatsApp', 'Seccion_POS', 'Detalle_Items', 'Condicion_Pago', 'Monto_Total_USD', 'Abono_Inicial_USD', 'Dias_Plazo', 'Num_Cuotas'],
+          ['2026-11-21', 'Mariana Pérez', '584125550101', 'Ropa de Bebe', '2x Body Algodón RN', 'Credito', 10.00, 4.00, 15, 2]
+        ];
       } else if (type === 'gastos_capital') {
-        filename = 'Plantilla_Capital_Gastos.csv';
-        csvContent = [
-          'Fecha,Tipo_Movimiento,Descripcion,Moneda,Monto,Tasa_Bs_USD',
-          '2026-11-01,Capital Inicial,Capital de arranque del negocio,USD,1000.00,914.03',
-          '2026-11-18,Gasto Operativo,Bolsas y etiquetas para entregas,USD,15.00,915.00'
-        ].join('
-');
+        filename = 'Plantilla_Capital_Gastos.xlsx';
+        sheetName = 'Capital_Gastos';
+        rows = [
+          ['Fecha', 'Tipo_Movimiento', 'Descripcion', 'Moneda', 'Monto', 'Tasa_Bs_USD'],
+          ['2026-11-01', 'Capital Inicial', 'Capital de arranque del negocio', 'USD', 1000.00, 914.03],
+          ['2026-11-18', 'Gasto Operativo', 'Bolsas y etiquetas para entregas', 'USD', 15.00, 915.00]
+        ];
       }
 
-      const blob = new Blob(['﻿' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName);
+      XLSX.writeFile(wb, filename);
     }
 
     function uploadInventoryCSV(event) {
       const file = event.target.files[0];
       if (!file) return;
+      if (typeof XLSX === 'undefined') {
+        alert('Error: No se cargó la librería Excel (SheetJS).');
+        return;
+      }
       const reader = new FileReader();
       reader.onload = function(e) {
-        const text = e.target.result;
-        const lines = text.split(/?
-/).filter(l => l.trim() !== '');
-        if (lines.length < 2) {
-          alert('El archivo CSV parece vacío.');
-          return;
-        }
-        let added = 0;
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(',');
-          if (cols.length < 12) continue;
-          const name = cols[0].trim();
-          const cat = cols[1].trim() || 'Cantina';
-          const size = cols[2].trim();
-          const status = cols[3].trim() === 'En Tránsito' ? 'En Tránsito' : 'Disponible';
-          const uEmp = parseFloat(cols[4]) || 1;
-          const cEmp = parseFloat(cols[5]) || 1;
-          const totalUnid = Math.round(uEmp * cEmp);
-          const costPackBase = parseFloat(cols[6]) || 0;
-          const hasIva = cols[7].trim().toUpperCase() === 'SI';
-          const freightTotal = parseFloat(cols[8]) || 0;
-          const curr = cols[9].trim().toUpperCase() || 'USD';
-          const rate = parseFloat(cols[10]) || getActiveRate();
-          const sellPriceUsd = parseFloat(cols[11]) || 0;
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: '' });
 
-          const baseTotal = cEmp * costPackBase;
-          const ivaMonto = hasIva ? (baseTotal * 0.16) : 0;
-          const totalInvertido = baseTotal + ivaMonto + freightTotal;
-          const unitCostOrig = totalUnid > 0 ? (totalInvertido / totalUnid) : 0;
-          const unitCostUsd = curr === 'VES' ? (unitCostOrig / rate) : unitCostOrig;
+          if (rows.length < 2) {
+            alert('El archivo Excel parece vacío.');
+            return;
+          }
+          let added = 0;
+          for (let i = 1; i < rows.length; i++) {
+            const cols = rows[i];
+            if (!cols || cols.length < 12 || !String(cols[0]).trim()) continue;
+            const name = String(cols[0]).trim();
+            const cat = String(cols[1]).trim() || 'Cantina';
+            const size = String(cols[2]).trim();
+            const status = String(cols[3]).trim() === 'En Tránsito' ? 'En Tránsito' : 'Disponible';
+            const uEmp = parseFloat(cols[4]) || 1;
+            const cEmp = parseFloat(cols[5]) || 1;
+            const totalUnid = Math.round(uEmp * cEmp);
+            const costPackBase = parseFloat(cols[6]) || 0;
+            const hasIva = String(cols[7]).trim().toUpperCase() === 'SI';
+            const freightTotal = parseFloat(cols[8]) || 0;
+            const curr = String(cols[9]).trim().toUpperCase() || 'USD';
+            const rate = parseFloat(cols[10]) || getActiveRate();
+            const sellPriceUsd = parseFloat(cols[11]) || 0;
 
-          appState.products.push({
-            id: 'csv_' + Date.now() + '_' + i,
-            name, cat, size, status,
-            stock: totalUnid,
-            unitCostUsd,
-            sellPriceUsd
-          });
-          added++;
+            const baseTotal = cEmp * costPackBase;
+            const ivaMonto = hasIva ? (baseTotal * 0.16) : 0;
+            const totalInvertido = baseTotal + ivaMonto + freightTotal;
+            const unitCostOrig = totalUnid > 0 ? (totalInvertido / totalUnid) : 0;
+            const unitCostUsd = curr === 'VES' ? (unitCostOrig / rate) : unitCostOrig;
+
+            appState.products.push({
+              id: 'xlsx_' + Date.now() + '_' + i,
+              name, cat, size, status,
+              stock: totalUnid,
+              unitCostUsd,
+              sellPriceUsd
+            });
+            added++;
+          }
+          saveState();
+          alert(`Se cargaron ${added} productos desde el archivo Excel (.xlsx).`);
+        } catch (err) {
+          alert('Error al leer el archivo Excel: ' + err.message);
         }
-        saveState();
-        alert(`Se cargaron ${added} productos desde la plantilla CSV.`);
         event.target.value = '';
       };
-      reader.readAsText(file);
+      reader.readAsArrayBuffer(file);
     }
 
     function exportSalesCSV() {
+      if (typeof XLSX === 'undefined') {
+        alert('Error: No se cargó la librería Excel (SheetJS).');
+        return;
+      }
       const rows = [
-        'Fecha,Cliente,Telefono,Condicion,Metodo,Total_USD,Cobrado_USD,Saldo_Pendiente_USD,Tasa'
+        ['Fecha', 'Cliente', 'Telefono', 'Productos_Detalle', 'Condicion', 'Metodo', 'Total_USD', 'Cobrado_USD', 'Saldo_Pendiente_USD', 'Tasa']
       ];
       appState.sales.forEach(s => {
-        rows.push(`${s.date},"${s.client}",${s.phone},${s.condition},${s.method},${s.totalUsd.toFixed(2)},${s.paidUsd.toFixed(2)},${s.balanceUsd.toFixed(2)},${s.rate}`);
+        const itemsSummary = (s.items || []).map(i => `${i.qty}x ${i.name}`).join(', ');
+        rows.push([
+          s.date,
+          s.client,
+          s.phone,
+          itemsSummary,
+          s.condition,
+          s.method,
+          Number(s.totalUsd.toFixed(2)),
+          Number(s.paidUsd.toFixed(2)),
+          Number(s.balanceUsd.toFixed(2)),
+          Number(s.rate)
+        ]);
       });
-      const blob = new Blob(['﻿' + rows.join('
-')], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `Ventas_FinanzaPOS_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb, ws, 'Ventas');
+      XLSX.writeFile(wb, `Ventas_FinanzaPOS_${new Date().toISOString().split('T')[0]}.xlsx`);
     }
 
     // =========================================================================
@@ -1429,7 +1704,7 @@ Ingresa el costo adicional de flete/envío POR UNIDAD en $ (0 si no hay adiciona
       }
 
       container.innerHTML = pending.map(s => {
-        const quotaVal = s.balanceUsd / (s.installments || 1);
+        const quotaVal = s.installments > 0 ? (s.balanceUsd / s.installments) : s.balanceUsd;
         return `
           <div class="bg-bnCard border border-bnBorder rounded-xl p-4 space-y-3">
             <div class="flex justify-between items-start">
@@ -1481,14 +1756,21 @@ Ingresa el monto del abono en USD ($):`, sale.balanceUsd.toFixed(2));
         sale.phone = phone;
         saveState();
       }
-      const msg = `Hola *${sale.client}*, te saludamos para recordarte tu estado de cuenta pendiente:
+      const itemsList = (sale.items && sale.items.length > 0)
+        ? sale.items.map(i => `  - ${i.qty} unid. x ${i.name} ($${(i.qty * i.priceUsd).toFixed(2)})`).join('\n')
+        : '  - Compra registrada';
+      const msg = `Hola *${sale.client}*, te saludamos para recordarte el detalle de tu compra y estado de cuenta pendiente:
 
+*Descripción de la compra:*
+${itemsList}
+
+*Resumen de cuenta:*
 • Total compra: $${sale.totalUsd.toFixed(2)}
 • Abonado: $${sale.paidUsd.toFixed(2)}
 • *Saldo pendiente: $${sale.balanceUsd.toFixed(2)}*
 
 Quedamos atentos a tu pago. ¡Muchas gracias!`;
-      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+      shareOrDownloadInvoiceAndOpenWA(sale, phone, msg, true);
     }
 
     // =========================================================================
@@ -1586,8 +1868,12 @@ Quedamos atentos a tu pago. ¡Muchas gracias!`;
       const activeRate = getActiveRate();
       document.getElementById('mob-rate-badge').textContent = activeRate.toFixed(2);
       document.getElementById('side-active-rate').textContent = activeRate.toFixed(2);
-      document.getElementById('side-bcv-rate').textContent = parseFloat(appState.rates.bcv).toFixed(2);
-      document.getElementById('side-par-rate').textContent = parseFloat(appState.rates.paralela).toFixed(2);
+      const lbl = document.getElementById('side-rate-label');
+      if (lbl) lbl.textContent = appState.rates.activeType === 'oficial' ? 'BCV' : 'Paralela';
+      const sBcv = document.getElementById('side-input-bcv');
+      const sPar = document.getElementById('side-input-par');
+      if (sBcv) sBcv.value = parseFloat(appState.rates.bcv).toFixed(2);
+      if (sPar) sPar.value = parseFloat(appState.rates.paralela).toFixed(2);
       document.getElementById('cfg-rate-bcv').value = appState.rates.bcv;
       document.getElementById('cfg-rate-par').value = appState.rates.paralela;
       document.getElementById('dash-rate-selector').value = appState.rates.activeType;
