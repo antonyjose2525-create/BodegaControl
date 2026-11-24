@@ -696,6 +696,44 @@
     // =========================================================================
     // ESTADO GLOBAL Y PERSISTENCIA EN LOCALSTORAGE (COMPATIBLE SAFARI iOS)
     // =========================================================================
+    // =========================================================================
+    // FORMATO NUMÉRICO: MILES CON PUNTO (.) Y DECIMALES CON COMA (,)
+    // =========================================================================
+    function formatNumVE(value, decimals = 2) {
+      const num = Number(value);
+      if (!isFinite(num)) return (0).toFixed(decimals).replace('.', ',');
+      const fixed = num.toFixed(decimals);
+      const parts = fixed.split('.');
+      parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+      return decimals > 0 ? parts.join(',') : parts[0];
+    }
+
+    function parseNumVE(raw) {
+      if (typeof raw === 'number') return isFinite(raw) ? raw : 0;
+      if (raw === null || raw === undefined) return 0;
+      let s = String(raw).trim().replace(/[^0-9,.-]/g, '');
+      if (!s) return 0;
+      if (s.includes(',') && s.includes('.')) {
+        // Si tiene ambos, asumimos miles en '.' y decimales en ',' (o si el último es '.')
+        if (s.lastIndexOf(',') > s.lastIndexOf('.')) {
+          s = s.replace(/\./g, '').replace(',', '.');
+        } else {
+          s = s.replace(/,/g, '');
+        }
+      } else if (s.includes(',')) {
+        // Solo coma -> decimal
+        s = s.replace(/\./g, '').replace(',', '.');
+      } else if (s.includes('.')) {
+        // Si hay más de un punto, todos menos el último son miles
+        const dotCount = (s.match(/\./g) || []).length;
+        if (dotCount > 1) {
+          s = s.replace(/\./g, '');
+        }
+      }
+      const n = parseFloat(s);
+      return isFinite(n) ? n : 0;
+    }
+
     const STORAGE_KEY = 'finanzapos_pro_v1';
 
     let appState = {
@@ -896,30 +934,30 @@
       const patrimonio = liquidoDisponible + invDispVal + invTransVal + cxcPendiente;
       const roi = capitalBase > 0 ? ((beneficioNeto / capitalBase) * 100) : 0;
 
-      document.getElementById('kpi-capital-inicial').textContent = `$${capitalBase.toFixed(2)}`;
-      document.getElementById('kpi-capital-inicial-bs').textContent = `Bs. ${(capitalBase * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('kpi-capital-inicial').textContent = `$${formatNumVE(capitalBase, 2)}`;
+      document.getElementById('kpi-capital-inicial-bs').textContent = `Bs. ${formatNumVE(capitalBase * rate, 2)}`;
 
-      document.getElementById('kpi-liquido').textContent = `$${liquidoDisponible.toFixed(2)}`;
+      document.getElementById('kpi-liquido').textContent = `$${formatNumVE(liquidoDisponible, 2)}`;
       document.getElementById('kpi-liquido').className = `mt-2 text-2xl font-bold ${liquidoDisponible >= 0 ? 'text-bnGreen' : 'text-bnRed'}`;
-      document.getElementById('kpi-liquido-bs').textContent = `Bs. ${(liquidoDisponible * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('kpi-liquido-bs').textContent = `Bs. ${formatNumVE(liquidoDisponible * rate, 2)}`;
 
-      document.getElementById('kpi-inv-disp').textContent = `$${invDispVal.toFixed(2)}`;
-      document.getElementById('kpi-inv-disp-unid').textContent = `${invDispUnid} unid.`;
+      document.getElementById('kpi-inv-disp').textContent = `$${formatNumVE(invDispVal, 2)}`;
+      document.getElementById('kpi-inv-disp-unid').textContent = `${formatNumVE(invDispUnid, 0)} unid.`;
 
-      document.getElementById('kpi-inv-trans').textContent = `$${invTransVal.toFixed(2)}`;
-      document.getElementById('kpi-inv-trans-unid').textContent = `${invTransUnid} unid.`;
+      document.getElementById('kpi-inv-trans').textContent = `$${formatNumVE(invTransVal, 2)}`;
+      document.getElementById('kpi-inv-trans-unid').textContent = `${formatNumVE(invTransUnid, 0)} unid.`;
 
-      document.getElementById('kpi-beneficio-neto').textContent = `$${beneficioNeto.toFixed(2)}`;
+      document.getElementById('kpi-beneficio-neto').textContent = `$${formatNumVE(beneficioNeto, 2)}`;
       document.getElementById('kpi-beneficio-neto').className = `mt-2 text-3xl font-black ${beneficioNeto >= 0 ? 'text-bnGreen' : 'text-bnRed'}`;
-      document.getElementById('kpi-ventas-tot').textContent = `$${ventasTot.toFixed(2)}`;
-      document.getElementById('kpi-costo-vend').textContent = `$${costoVend.toFixed(2)}`;
-      document.getElementById('kpi-gastos-tot').textContent = `$${gastosOp.toFixed(2)}`;
+      document.getElementById('kpi-ventas-tot').textContent = `$${formatNumVE(ventasTot, 2)}`;
+      document.getElementById('kpi-costo-vend').textContent = `$${formatNumVE(costoVend, 2)}`;
+      document.getElementById('kpi-gastos-tot').textContent = `$${formatNumVE(gastosOp, 2)}`;
 
-      document.getElementById('kpi-cxc').textContent = `$${cxcPendiente.toFixed(2)}`;
+      document.getElementById('kpi-cxc').textContent = `$${formatNumVE(cxcPendiente, 2)}`;
       document.getElementById('kpi-cxc-count').textContent = cxcCount;
 
-      document.getElementById('kpi-patrimonio').textContent = `$${patrimonio.toFixed(2)}`;
-      document.getElementById('kpi-roi').textContent = `${roi.toFixed(1)}%`;
+      document.getElementById('kpi-patrimonio').textContent = `$${formatNumVE(patrimonio, 2)}`;
+      document.getElementById('kpi-roi').textContent = `${formatNumVE(roi, 1)}%`;
 
       // Tabla últimas ventas
       const tbody = document.getElementById('dash-recent-sales');
@@ -929,7 +967,7 @@
         tbody.innerHTML = [...appState.sales].reverse().slice(0, 8).map(s => {
           const itemsTxt = s.items.map(i => `${i.qty}x ${i.name}`).join(', ');
           const badge = s.condition === 'Credito'
-            ? `<span class="px-2 py-0.5 rounded bg-bnYellow/15 text-bnYellow text-[11px] font-semibold">Crédito ($${s.balanceUsd.toFixed(2)} pend.)</span>`
+            ? `<span class="px-2 py-0.5 rounded bg-bnYellow/15 text-bnYellow text-[11px] font-semibold">Crédito ($${formatNumVE(s.balanceUsd, 2)} pend.)</span>`
             : `<span class="px-2 py-0.5 rounded bg-bnGreen/15 text-bnGreen text-[11px] font-semibold">Contado</span>`;
           return `
             <tr class="hover:bg-bnBg/50">
@@ -937,8 +975,8 @@
               <td class="py-2.5 px-3 font-medium text-bnText">${s.client || 'Mostrador'}</td>
               <td class="py-2.5 px-3 text-bnMuted max-w-xs truncate">${itemsTxt}</td>
               <td class="py-2.5 px-3">${badge}</td>
-              <td class="py-2.5 px-3 text-right font-bold text-bnText">$${s.totalUsd.toFixed(2)}</td>
-              <td class="py-2.5 px-3 text-right text-bnMuted">Bs. ${(s.totalUsd * s.rate).toFixed(2)}</td>
+              <td class="py-2.5 px-3 text-right font-bold text-bnText">$${formatNumVE(s.totalUsd, 2)}</td>
+              <td class="py-2.5 px-3 text-right text-bnMuted">Bs. ${formatNumVE(s.totalUsd * s.rate, 2)}</td>
             </tr>
           `;
         }).join('');
@@ -964,7 +1002,7 @@
 
     function renderPOS() {
       const rate = getActiveRate();
-      document.getElementById('pos-rate-display').textContent = rate.toFixed(2);
+      document.getElementById('pos-rate-display').textContent = formatNumVE(rate, 2);
       const q = (document.getElementById('pos-search').value || '').toLowerCase();
 
       const available = appState.products.filter(p =>
@@ -991,8 +1029,8 @@
               <h4 class="font-bold text-xs text-bnText line-clamp-2 mt-0.5">${p.name}</h4>
             </div>
             <div class="mt-2 pt-2 border-t border-bnBorder/60 flex items-baseline justify-between">
-              <span class="text-sm font-black text-bnGreen">$${p.sellPriceUsd.toFixed(2)}</span>
-              <span class="text-[10px] text-bnMuted">Disp: ${p.stock}</span>
+              <span class="text-sm font-black text-bnGreen">$${formatNumVE(p.sellPriceUsd, 2)}</span>
+              <span class="text-[10px] text-bnMuted">Disp: ${formatNumVE(p.stock, 0)}</span>
             </div>
           </button>
         `;
@@ -1072,29 +1110,29 @@
           <div class="py-2 flex items-center justify-between gap-2 text-xs">
             <div class="flex-1 min-w-0">
               <div class="font-semibold text-bnText truncate">${item.name}</div>
-              <div class="text-[11px] text-bnMuted">$${item.priceUsd.toFixed(2)} c/u</div>
+              <div class="text-[11px] text-bnMuted">$${formatNumVE(item.priceUsd, 2)} c/u</div>
             </div>
             <div class="flex items-center gap-1.5">
               <button onclick="changeCartQty('${item.id}', -1)" class="w-6 h-6 rounded bg-bnBg border border-bnBorder text-bnText font-bold">-</button>
               <span class="w-5 text-center font-bold">${item.qty}</span>
               <button onclick="changeCartQty('${item.id}', 1)" class="w-6 h-6 rounded bg-bnBg border border-bnBorder text-bnText font-bold">+</button>
             </div>
-            <div class="w-16 text-right font-bold text-bnGreen">$${(item.qty * item.priceUsd).toFixed(2)}</div>
+            <div class="w-16 text-right font-bold text-bnGreen">$${formatNumVE(item.qty * item.priceUsd, 2)}</div>
           </div>
         `).join('');
       }
 
       const totalUsd = cart.reduce((acc, i) => acc + (i.qty * i.priceUsd), 0);
-      document.getElementById('pos-total-usd').textContent = `$${totalUsd.toFixed(2)}`;
-      document.getElementById('pos-total-bs').textContent = `Bs. ${(totalUsd * rate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      document.getElementById('pos-total-usd').textContent = `$${formatNumVE(totalUsd, 2)}`;
+      document.getElementById('pos-total-bs').textContent = `Bs. ${formatNumVE(totalUsd * rate, 2)}`;
 
       // Cálculos crédito
       const down = parseFloat(document.getElementById('pos-credit-down').value) || 0;
       const inst = parseInt(document.getElementById('pos-credit-installments').value) || 0;
       const balance = Math.max(0, totalUsd - down);
       const quota = inst > 0 ? (balance / inst) : balance;
-      document.getElementById('pos-credit-balance').textContent = `$${balance.toFixed(2)}`;
-      document.getElementById('pos-credit-quota').textContent = `$${quota.toFixed(2)}`;
+      document.getElementById('pos-credit-balance').textContent = `$${formatNumVE(balance, 2)}`;
+      document.getElementById('pos-credit-quota').textContent = `$${formatNumVE(quota, 2)}`;
     }
 
     function processSale(sendWhatsApp) {
@@ -1444,9 +1482,9 @@ _(Adjunto imagen de su factura digital)_
             </td>
             <td class="py-2.5 px-3 text-bnMuted">${p.cat}</td>
             <td class="py-2.5 px-3 text-center">${statusBadge}</td>
-            <td class="py-2.5 px-3 text-right font-bold ${p.stock <= 3 ? 'text-bnRed' : 'text-bnText'}">${p.stock}</td>
-            <td class="py-2.5 px-3 text-right text-bnMuted">$${(p.unitCostUsd || 0).toFixed(3)}</td>
-            <td class="py-2.5 px-3 text-right font-bold text-bnGreen">$${(p.sellPriceUsd || 0).toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right font-bold ${p.stock <= 3 ? 'text-bnRed' : 'text-bnText'}">${formatNumVE(p.stock, 0)}</td>
+            <td class="py-2.5 px-3 text-right text-bnMuted">$${formatNumVE(p.unitCostUsd || 0, 3)}</td>
+            <td class="py-2.5 px-3 text-right font-bold text-bnGreen">$${formatNumVE(p.sellPriceUsd || 0, 2)}</td>
             <td class="py-2.5 px-3 text-right text-bnYellow">${margin}%</td>
             <td class="py-2.5 px-3 text-center space-x-1">
               ${receiveBtn}
@@ -1565,10 +1603,10 @@ Ingresa el costo adicional de flete/envío POR UNIDAD en $ (0 si no hay adiciona
         filename = 'Plantilla_Inventario_FinanzaPOS.xlsx';
         sheetName = 'Inventario';
         rows = [
-          ['Producto', 'Categoria', 'Talla_Presentacion', 'Estado', 'Unid_Por_Empaque', 'Cant_Empaques', 'Costo_Empaque_Base', 'Aplica_IVA', 'Flete_Adicional_Total', 'Moneda_Costo', 'Tasa_Compra_Bs_USD', 'Precio_Venta_Unit_USD'],
-          ['CLIPS BOLSA PEQUEÑO 20X120GR', 'Cantina', '20 unid. (Bulto)', 'Disponible', 20, 1, 29339.84, 'NO', 0, 'VES', 914.03, 2.20],
-          ['ZOEK CROCANTE', 'Cantina', 'Unidad Helado', 'Disponible', 1, 6, 884.15, 'SI', 0, 'VES', 915.75, 1.60],
-          ['BODY ALGODÓN MANGA CORTA', 'Ropa de Bebe', 'RN / 0-3M', 'En Tránsito', 12, 2, 24.00, 'NO', 6.00, 'USD', 915.00, 5.00]
+          ['Producto', 'Categoria', 'Talla/Tamaño', 'Estado', 'Unidades', 'Paquete/Bulto', 'Costo Paquete/Bulto', 'Moneda', 'Tasa compra', 'PVP'],
+          ['CLIPS BOLSA PEQUEÑO 20X120GR', 'Cantina', '120gr', 'Disponible', 20, 1, 29339.84, 'VES', 914.03, 2.20],
+          ['ZOEK CROCANTE', 'Cantina', 'Unidad Helado', 'Disponible', 1, 6, 884.15, 'VES', 915.75, 1.60],
+          ['BODY ALGODÓN MANGA CORTA', 'Ropa de Bebe', 'RN / 0-3M', 'En Tránsito', 12, 2, 24.00, 'USD', 915.00, 5.00]
         ];
       } else if (type === 'compras_facturas') {
         filename = 'Plantilla_Compras_Facturas_IVA.xlsx';
@@ -1620,29 +1658,70 @@ Ingresa el costo adicional de flete/envío POR UNIDAD en $ (0 si no hay adiciona
             alert('El archivo Excel parece vacío.');
             return;
           }
+          // Normaliza encabezados por si el usuario reordena o escribe distinto
+          const headers = (rows[0] || []).map(h =>
+            String(h || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '')
+          );
+          const colIdx = (candidates, fallback) => {
+            for (const c of candidates) {
+              const idx = headers.indexOf(c);
+              if (idx !== -1) return idx;
+            }
+            return fallback;
+          };
+
+          const idxProd = colIdx(['producto', 'nombre', 'articulo', 'item'], 0);
+          const idxCat = colIdx(['categoria', 'cat', 'seccion'], 1);
+          const idxSize = colIdx(['tallatamano', 'talla', 'tamano', 'presentacion'], 2);
+          const idxEst = colIdx(['estado', 'status'], 3);
+          const idxUnid = colIdx(['unidades', 'unid', 'unidxpaquete', 'unidadespaquete'], 4);
+          const idxPack = colIdx(['paquetebulto', 'paquete', 'bulto', 'cantpaquete', 'cantbulto'], 5);
+          const idxCost = colIdx(['costopaquetebulto', 'costopaquete', 'costobulto', 'costo'], 6);
+          const idxCurr = colIdx(['moneda', 'divisa'], 7);
+          const idxRate = colIdx(['tasacompra', 'tasa', 'tasabs'], 8);
+          const idxPvp = colIdx(['pvp', 'precio', 'precioventa'], 9);
+
           let added = 0;
           for (let i = 1; i < rows.length; i++) {
             const cols = rows[i];
-            if (!cols || cols.length < 12 || !String(cols[0]).trim()) continue;
-            const name = String(cols[0]).trim();
-            const cat = String(cols[1]).trim() || 'Cantina';
-            const size = String(cols[2]).trim();
-            const status = String(cols[3]).trim() === 'En Tránsito' ? 'En Tránsito' : 'Disponible';
-            const uEmp = parseFloat(cols[4]) || 1;
-            const cEmp = parseFloat(cols[5]) || 1;
-            const totalUnid = Math.round(uEmp * cEmp);
-            const costPackBase = parseFloat(cols[6]) || 0;
-            const hasIva = String(cols[7]).trim().toUpperCase() === 'SI';
-            const freightTotal = parseFloat(cols[8]) || 0;
-            const curr = String(cols[9]).trim().toUpperCase() || 'USD';
-            const rate = parseFloat(cols[10]) || getActiveRate();
-            const sellPriceUsd = parseFloat(cols[11]) || 0;
+            if (!cols || !Array.isArray(cols)) continue;
+            const name = String(cols[idxProd] ?? '').trim();
+            if (!name) continue;
 
-            const baseTotal = cEmp * costPackBase;
-            const ivaMonto = hasIva ? (baseTotal * 0.16) : 0;
-            const totalInvertido = baseTotal + ivaMonto + freightTotal;
-            const unitCostOrig = totalUnid > 0 ? (totalInvertido / totalUnid) : 0;
-            const unitCostUsd = curr === 'VES' ? (unitCostOrig / rate) : unitCostOrig;
+            const catRaw = String(cols[idxCat] ?? '').trim().toLowerCase();
+            const cat = catRaw.includes('ropa') || catRaw.includes('bebe') ? 'Ropa de Bebe' : 'Cantina';
+
+            const size = String(cols[idxSize] ?? '').trim();
+
+            const estRaw = String(cols[idxEst] ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const status = estRaw.includes('transito') ? 'En Tránsito' : 'Disponible';
+
+            const rawUnidStr = String(cols[idxUnid] ?? '').trim();
+            const unitsPerPack = rawUnidStr === '' ? 1 : Math.max(0, parseNumVE(cols[idxUnid]));
+
+            const rawPackStr = String(cols[idxPack] ?? '').trim();
+            const packQty = rawPackStr === '' ? 1 : Math.max(0, parseNumVE(cols[idxPack]));
+
+            const totalUnid = Math.max(0, Math.round(unitsPerPack * packQty));
+            const packCost = Math.max(0, parseNumVE(cols[idxCost]));
+
+            const currRaw = String(cols[idxCurr] ?? '').trim().toUpperCase();
+            const isVes = currRaw === 'VES' || currRaw === 'BS' || currRaw === 'BS.' || currRaw.includes('BOLIVAR');
+            const curr = isVes ? 'VES' : 'USD';
+
+            const rawRateStr = String(cols[idxRate] ?? '').trim();
+            const parsedRate = rawRateStr === '' ? 0 : parseNumVE(cols[idxRate]);
+            const rate = curr === 'VES' ? (parsedRate > 0 ? parsedRate : getActiveRate()) : (parsedRate > 0 ? parsedRate : 1);
+
+            const sellPriceUsd = Math.max(0, parseNumVE(cols[idxPvp]));
+
+            // Cálculo base:
+            // Costo total del lote = Paquete/Bulto * Costo Paquete/Bulto
+            // Costo unitario en moneda original = Costo total del lote / Total Unidades
+            // Si Moneda es VES/BS -> dividimos entre Tasa compra para llevar a USD
+            const totalCostOrig = packQty * packCost;
+            const unitCostOrig = totalUnid > 0 ? (totalCostOrig / totalUnid) : 0;
+            const unitCostUsd = curr === 'VES' ? (rate > 0 ? unitCostOrig / rate : 0) : unitCostOrig;
 
             appState.products.push({
               id: 'xlsx_' + Date.now() + '_' + i,
@@ -1712,12 +1791,12 @@ Ingresa el costo adicional de flete/envío POR UNIDAD en $ (0 si no hay adiciona
                 <h4 class="font-bold text-sm text-bnText">${s.client}</h4>
                 <p class="text-[11px] text-bnMuted">Compra: ${s.date} • Plazo: ${s.days} días (${s.installments} cuotas)</p>
               </div>
-              <span class="px-2.5 py-1 rounded-lg bg-bnRed/15 text-bnRed font-bold text-xs">Debe: $${s.balanceUsd.toFixed(2)}</span>
+              <span class="px-2.5 py-1 rounded-lg bg-bnRed/15 text-bnRed font-bold text-xs">Debe: $${formatNumVE(s.balanceUsd, 2)}</span>
             </div>
             <div class="bg-bnBg rounded-lg p-2.5 grid grid-cols-3 gap-2 text-xs">
-              <div><span class="text-bnMuted block text-[10px]">Total Venta</span><b>$${s.totalUsd.toFixed(2)}</b></div>
-              <div><span class="text-bnMuted block text-[10px]">Abonado</span><b class="text-bnGreen">$${s.paidUsd.toFixed(2)}</b></div>
-              <div><span class="text-bnMuted block text-[10px]">Cuota Ref.</span><b class="text-bnYellow">$${quotaVal.toFixed(2)}</b></div>
+              <div><span class="text-bnMuted block text-[10px]">Total Venta</span><b>$${formatNumVE(s.totalUsd, 2)}</b></div>
+              <div><span class="text-bnMuted block text-[10px]">Abonado</span><b class="text-bnGreen">$${formatNumVE(s.paidUsd, 2)}</b></div>
+              <div><span class="text-bnMuted block text-[10px]">Cuota Ref.</span><b class="text-bnYellow">$${formatNumVE(quotaVal, 2)}</b></div>
             </div>
             <div class="grid grid-cols-2 gap-2 pt-1">
               <button onclick="registerPayment('${s.id}')" class="bg-bnGreen text-black font-bold py-2 rounded-lg text-xs">
@@ -1816,9 +1895,9 @@ Quedamos atentos a tu pago. ¡Muchas gracias!`;
             <td class="py-2.5 px-3 text-bnMuted">${m.date}</td>
             <td class="py-2.5 px-3">${badge}</td>
             <td class="py-2.5 px-3 text-bnText">${m.desc}</td>
-            <td class="py-2.5 px-3 text-right">${m.currency} ${m.amount.toFixed(2)}</td>
-            <td class="py-2.5 px-3 text-right text-bnMuted">${m.rate.toFixed(2)}</td>
-            <td class="py-2.5 px-3 text-right font-bold text-bnText">$${m.usdEquiv.toFixed(2)}</td>
+            <td class="py-2.5 px-3 text-right">${m.currency} ${formatNumVE(m.amount, 2)}</td>
+            <td class="py-2.5 px-3 text-right text-bnMuted">${formatNumVE(m.rate, 2)}</td>
+            <td class="py-2.5 px-3 text-right font-bold text-bnText">$${formatNumVE(m.usdEquiv, 2)}</td>
             <td class="py-2.5 px-3 text-center"><button onclick="deleteMovement('${m.id}')" class="text-bnRed">✕</button></td>
           </tr>
         `;
@@ -1866,8 +1945,8 @@ Quedamos atentos a tu pago. ¡Muchas gracias!`;
     // =========================================================================
     function refreshAllUI() {
       const activeRate = getActiveRate();
-      document.getElementById('mob-rate-badge').textContent = activeRate.toFixed(2);
-      document.getElementById('side-active-rate').textContent = activeRate.toFixed(2);
+      document.getElementById('mob-rate-badge').textContent = formatNumVE(activeRate, 2);
+      document.getElementById('side-active-rate').textContent = formatNumVE(activeRate, 2);
       const lbl = document.getElementById('side-rate-label');
       if (lbl) lbl.textContent = appState.rates.activeType === 'oficial' ? 'BCV' : 'Paralela';
       const sBcv = document.getElementById('side-input-bcv');
